@@ -1,15 +1,20 @@
+// pages/Blogs.jsx
 import React, { useEffect, useState } from "react";
-import databaseServices from "../appwrite/config";
-import storageServices from "../appwrite/storage";
 import { useSelector } from "react-redux";
 import { NavLink } from "react-router-dom";
+import databaseServices from "../appwrite/config";
+import storageServices from "../appwrite/storage";
+import { FaEye } from "react-icons/fa";
 
 function Blogs() {
   const user = useSelector((state) => state.auth.userData);
   const [posts, setPosts] = useState([]);
-  const [filter, setFilter] = useState("explore");
+  const [filter, setFilter] = useState("latest");
   const [loading, setLoading] = useState(false);
+  const [animatePage, setAnimatePage] = useState(false);
+  const [animKey, setAnimKey] = useState(0);
 
+  // Fetch posts
   const fetchPosts = async () => {
     setLoading(true);
     try {
@@ -23,14 +28,20 @@ function Blogs() {
 
   useEffect(() => {
     fetchPosts();
+    setTimeout(() => setAnimatePage(true), 50);
   }, []);
 
-  const handleDelete = async (postId) => {
-    const confirmDelete = window.confirm(
-      "Are you sure you want to delete this post?"
-    );
-    if (!confirmDelete) return;
+  // Format date
+  const formatDate = (date) =>
+    new Date(date).toLocaleDateString("en-IN", {
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+    });
 
+  // Delete post
+  const handleDelete = async (postId) => {
+    if (!window.confirm("Are you sure you want to delete this post?")) return;
     try {
       await databaseServices.deletePost(postId);
       setPosts((prev) => prev.filter((post) => post.$id !== postId));
@@ -41,141 +52,129 @@ function Blogs() {
     }
   };
 
-  const filteredPosts =
-    filter === "my"
-      ? posts.filter((post) => post.userId === user?.$id)
-      : posts.filter((post) => post.status === "active");
+  // Filter with animation
+  const handleFilter = (f) => {
+    setAnimatePage(false);
+    setTimeout(() => {
+      setFilter(f);
+      setAnimKey(prev => prev + 1);
+      setAnimatePage(true);
+    }, 150);
+  };
+
+  // Filter & sort posts
+  const filteredPosts = posts
+    .filter(post => {
+      if (filter === "my") return post.userId === user?.$id;
+      if (filter === "today") return new Date(post.$createdAt).toDateString() === new Date().toDateString();
+      return true;
+    })
+    .sort((a, b) => {
+      if (filter === "latest") return new Date(b.$createdAt) - new Date(a.$createdAt);
+      if (filter === "mostViewed") return (b.views || 0) - (a.views || 0);
+      return 0;
+    });
 
   return (
-    <div className="bg-black text-white min-h-screen px-6 py-10
-                    opacity-0 animate-[fadeInUp_0.5s_ease-out_forwards]">
+    <div
+      className={`bg-black text-white min-h-screen px-4 py-6 transition-opacity duration-500 ease-in-out
+        ${animatePage ? "opacity-100" : "opacity-0"}`}
+    >
+      {/* Sticky Header */}
+      <div className="sticky top-0 z-50 bg-black/90 backdrop-blur border-b border-gray-800 px-4 py-3 flex flex-col md:flex-row md:justify-between items-start md:items-center gap-3 transition-all">
+        <h1 className="text-xl font-semibold">Blogs</h1>
 
-      <h1 className="text-2xl font-semibold mb-6">Blogs</h1>
-
-      {/* Filter Tabs */}
-      <div className="flex gap-4 mb-8">
-        <button
-          onClick={() => setFilter("explore")}
-          className={`cursor-pointer px-4 py-2 rounded transition-all duration-200
-            ${
-              filter === "explore"
-                ? "bg-amber-400 text-black font-semibold shadow-sm"
-                : "bg-gray-800 text-white hover:bg-gray-700 hover:shadow-md"
-            }`}
-        >
-          Explore
-        </button>
-
-        <button
-          onClick={() => setFilter("my")}
-          className={`cursor-pointer px-4 py-2 rounded transition-all duration-200
-            ${
-              filter === "my"
-                ? "bg-amber-400 text-black font-semibold shadow-sm"
-                : "bg-gray-800 text-white hover:bg-gray-700 hover:shadow-md"
-            }`}
-        >
-          My Blogs
-        </button>
+        {/* Filters */}
+        <div className="flex gap-2 flex-wrap">
+          {["latest", "today", "mostViewed", "my"].map(f => (
+            <button
+              key={f}
+              onClick={() => handleFilter(f)}
+              className={`px-3 py-1.5 text-sm rounded transition cursor-pointer
+                ${filter === f
+                  ? "bg-amber-400 text-black font-medium"
+                  : "bg-gray-800 text-gray-300 hover:bg-gray-700"
+                }`}
+            >
+              {f === "latest" ? "Latest" : f === "today" ? "Today" : f === "mostViewed" ? "Most Viewed" : "My Blogs"}
+            </button>
+          ))}
+        </div>
       </div>
 
-      {/* Loading */}
-      {loading && (
-        <div className="text-center text-gray-400 col-span-full">
-          Loading posts...
-        </div>
-      )}
+      {/* Content */}
+      <div key={animKey} className="flex flex-col gap-4 md:grid md:grid-cols-3 mt-4 transition-all duration-300 ease-in-out">
+        {loading && <div className="text-gray-400 text-center col-span-full">Loading posts...</div>}
 
-      {/* Posts Grid */}
-      <div className="grid md:grid-cols-3 gap-6">
-        {filteredPosts.map((post, index) => {
+        {!loading && filteredPosts.length === 0 && (
+          <p className="text-gray-400 text-center col-span-full mt-10">
+            {filter === "my" ? "You haven't written any blogs yet." : "No posts found."}
+          </p>
+        )}
+
+        {!loading && filteredPosts.map(post => {
           const isOwner = user?.$id === post.userId;
 
           return (
             <div
               key={post.$id}
-              className="border border-gray-800 rounded overflow-hidden flex flex-col
-                         transform opacity-0 animate-[fadeInUp_0.5s_ease-out_forwards]
-                         hover:scale-[1.02] hover:shadow-lg transition-all duration-300"
-              style={{ animationDelay: `${index * 100}ms` }} // 🔥 stagger
+              className="flex md:flex-col bg-gray-900 border border-gray-800 rounded-lg overflow-hidden relative
+                group transition-transform duration-300 ease-out hover:scale-105 hover:shadow-lg"
             >
-              {/* Image */}
-              {post.featuredImage && (
-                <img
-                  src={storageServices.getfileview(post.featuredImage)}
-                  alt={post.title}
-                  className="h-40 w-full object-cover"
-                />
-              )}
+              {/* Main clickable area */}
+              <NavLink to={`/post/${post.$id}`} className="flex md:flex-col flex-1 cursor-pointer">
+                {post.featuredImage && (
+                  <div className="overflow-hidden">
+                    <img
+                      src={storageServices.getFileView(post.featuredImage)}
+                      alt={post.title}
+                      className="w-32 h-28 md:w-full md:h-40 object-cover transition-transform duration-300 ease-out group-hover:scale-110 group-hover:opacity-90"
+                    />
+                  </div>
+                )}
 
-              {/* Content */}
-              <div className="p-4 flex flex-col gap-2 grow">
-                <h2 className="text-lg font-semibold">{post.title}</h2>
+                <div className="p-3 flex flex-col justify-between flex-1">
+                  <div>
+                    <h2 className="text-sm md:text-lg font-semibold line-clamp-1 group-hover:underline transition-colors duration-200">{post.title}</h2>
+                    <p className="text-xs text-gray-400">
+                      {post.uploaderName || "Unknown"} • {formatDate(post.$createdAt)}
+                    </p>
+                    {post.$updatedAt !== post.$createdAt && (
+                      <p className="text-xs text-gray-500">Updated {formatDate(post.$updatedAt)}</p>
+                    )}
+                    <p className="text-xs text-gray-400 line-clamp-2 mt-1">
+                      {post.content.replace(/<[^>]+>/g, "").slice(0, 80)}...
+                    </p>
+                  </div>
 
-                <p className="text-gray-400 text-sm">
-                  By: {post.uploaderName || "Unknown"}
-                </p>
-
-                <p className="text-gray-400 text-sm line-clamp-3">
-                  {post.content.replace(/<[^>]+>/g, "").slice(0, 100)}...
-                </p>
-
-                {/* Buttons */}
-                <div className="mt-auto flex justify-between items-center gap-2">
-                  <NavLink
-                    to={`/post/${post.$id}`}
-                    className="text-sm hover:underline"
-                  >
-                    Read
-                  </NavLink>
-
-                  {isOwner && (
-                    <div className="flex gap-2">
-                      <NavLink
-                        to={`/edit/${post.$id}`}
-                        className="text-sm text-amber-400 hover:underline"
-                      >
-                        Edit
-                      </NavLink>
-
-                      <button
-                        onClick={() => handleDelete(post.$id)}
-                        className="text-sm cursor-pointer text-red-500 hover:underline"
-                      >
-                        Delete
-                      </button>
-                    </div>
-                  )}
+                  {/* Views */}
+                  <div className="flex justify-start items-center mt-2 text-xs text-gray-300 gap-1">
+                    <FaEye /> {post.views || 0}
+                  </div>
                 </div>
-              </div>
+              </NavLink>
+
+              {/* Owner actions */}
+              {isOwner && (
+                <div className="absolute top-2 right-2 flex gap-2 text-xs z-10">
+                  <NavLink
+                    to={`/edit/${post.$id}`}
+                    className="text-amber-400 bg-gray-800 px-2 py-1 rounded hover:bg-gray-700 transition-colors duration-200"
+                  >
+                    Edit
+                  </NavLink>
+                  <button
+                    onClick={() => handleDelete(post.$id)}
+                    className="text-red-500 bg-gray-800 px-2 py-1 rounded hover:bg-gray-700 transition-colors duration-200"
+                  >
+                    Delete
+                  </button>
+                </div>
+              )}
             </div>
           );
         })}
-
-        {filteredPosts.length === 0 && !loading && (
-          <p className="text-gray-400 col-span-full text-center mt-10">
-            {filter === "my"
-              ? "You haven't written any blogs yet."
-              : "No blogs to explore yet."}
-          </p>
-        )}
       </div>
-
-      {/* Animation */}
-      <style>
-        {`
-          @keyframes fadeInUp {
-            0% {
-              opacity: 0;
-              transform: translateY(20px);
-            }
-            100% {
-              opacity: 1;
-              transform: translateY(0);
-            }
-          }
-        `}
-      </style>
     </div>
   );
 }

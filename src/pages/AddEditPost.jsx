@@ -14,7 +14,7 @@ function AddEditPost() {
   const navigate = useNavigate();
 
   const [user, setUser] = useState(null);
-  const [authLoading, setAuthLoading] = useState(true); // ✅ FIX
+  const [authLoading, setAuthLoading] = useState(true);
   const [form, setForm] = useState({
     title: "",
     content: "",
@@ -41,7 +41,7 @@ function AddEditPost() {
         setUser(u);
       })
       .catch((err) => console.log("Error fetching user:", err))
-      .finally(() => setAuthLoading(false)); // ✅ IMPORTANT
+      .finally(() => setAuthLoading(false));
   }, [navigate]);
 
   // 🔹 Load existing post (edit mode)
@@ -66,18 +66,23 @@ function AddEditPost() {
   // 🔹 Submit handler
   const handleSubmit = async (e) => {
     e.preventDefault();
-
-    if (!user) return; // ✅ no alert
+    if (!user) return;
 
     setLoading(true);
 
     try {
       let finalFileId = existingPost?.featuredImage || null;
 
-      // Upload file if selected
+      // 🔹 Upload new file if selected
       if (file) {
-        const uploaded = await storageServices.uploadFile(file);
+        const uploaded = await storageServices.uploadFile(file); // updated function
         if (!uploaded) throw new Error("File upload failed");
+
+        // 🔹 Delete old file if editing
+        if (existingPost?.featuredImage) {
+          await storageServices.deleteFile(existingPost.featuredImage); // updated function
+        }
+
         finalFileId = uploaded.$id;
       }
 
@@ -88,11 +93,14 @@ function AddEditPost() {
         content: form.content,
         status: form.status,
         featuredImage: finalFileId,
+        views: existingPost?.views || 0,
       };
 
       if (slug && existingPost) {
+        // Update post
         await databaseServices.updatePost(slug, postData);
       } else {
+        // Create post
         await databaseServices.createPost(postData);
       }
 
@@ -105,7 +113,7 @@ function AddEditPost() {
     setLoading(false);
   };
 
-  // ✅ BLOCK UI UNTIL AUTH CHECK
+  // ✅ Block UI until auth check
   if (authLoading) {
     return <div className="text-white p-10">Checking user...</div>;
   }
@@ -113,8 +121,8 @@ function AddEditPost() {
   if (!user) return null;
 
   return (
-    <div className="bg-black text-white min-h-screen px-6 py-10 flex justify-center relative">
-      
+    <div className="bg-black text-white min-h-screen px-4 py-10 flex justify-center relative">
+      {/* 🔹 Loading Overlay */}
       {loading && (
         <LoadingOverlay
           message={slug ? "Updating..." : "Publishing..."}
@@ -127,20 +135,18 @@ function AddEditPost() {
         </h2>
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-5">
-          
           {/* Title */}
           <Input
             label="Title"
             value={form.title}
-            onChange={(e) =>
-              setForm({ ...form, title: e.target.value })
-            }
+            onChange={(e) => setForm({ ...form, title: e.target.value })}
             required
           />
 
           {/* File Input */}
           <input
             type="file"
+            accept="image/*"
             onChange={(e) => setFile(e.target.files[0])}
             className="
               block w-full text-sm text-gray-600
@@ -160,18 +166,14 @@ function AddEditPost() {
           {/* Content Editor */}
           <RTE
             value={form.content}
-            onChange={(value) =>
-              setForm({ ...form, content: value })
-            }
+            onChange={(value) => setForm({ ...form, content: value })}
           />
 
           {/* Status */}
           <select
             className="bg-black border border-gray-700 p-2 rounded hover:border-blue-400 transition-all"
             value={form.status}
-            onChange={(e) =>
-              setForm({ ...form, status: e.target.value })
-            }
+            onChange={(e) => setForm({ ...form, status: e.target.value })}
           >
             <option value="active">Active</option>
             <option value="inactive">Inactive</option>
