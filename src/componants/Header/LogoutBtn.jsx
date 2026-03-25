@@ -7,33 +7,50 @@ import LogoutModal from "../LogoutModal";
 
 function LogoutBtn({ className = "" }) {
   const [showModal, setShowModal] = useState(false);
+  const [loading, setLoading] = useState(false); // ✅ NEW
+  const [fade, setFade] = useState(false); // ✅ NEW
+
   const dispatch = useDispatch();
   const navigate = useNavigate();
 
   const handleLogout = async () => {
+    setLoading(true);
+    setFade(true); // start fade
+
     try {
       await authService.logout();
       dispatch(logout());
-      setShowModal(false);
-      navigate("/");
+
+      // smooth delay before redirect
+      setTimeout(() => {
+        setShowModal(false);
+        navigate("/");
+      }, 300);
+
     } catch (error) {
       console.log("Logout error", error);
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
     <>
-      <button
-        onClick={() => setShowModal(true)}
-        className={`transition cursor-pointer ${className}`}
-      >
-        Logout
-      </button>
+      {/* Fade wrapper */}
+      <div className={`transition-opacity duration-300 ${fade ? "opacity-0" : "opacity-100"}`}>
+        <button
+          onClick={() => setShowModal(true)}
+          className={`transition cursor-pointer ${className}`}
+        >
+          Logout
+        </button>
+      </div>
 
       <LogoutModal
         isOpen={showModal}
         onConfirm={handleLogout}
-        onCancel={() => setShowModal(false)}
+        onCancel={() => !loading && setShowModal(false)}
+        loading={loading} // ✅ pass loading
       />
     </>
   );

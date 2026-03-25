@@ -10,35 +10,46 @@ import { useNavigate, useParams } from "react-router-dom";
 import LoadingOverlay from "../componants/LoadingOverlay";
 
 function AddEditPost() {
-  const { slug } = useParams(); // Document ID for edit
+  const { slug } = useParams();
   const navigate = useNavigate();
 
   const [user, setUser] = useState(null);
-  const [form, setForm] = useState({ title: "", content: "", status: "active" });
+  const [authLoading, setAuthLoading] = useState(true); // ✅ FIX
+  const [form, setForm] = useState({
+    title: "",
+    content: "",
+    status: "active",
+  });
   const [file, setFile] = useState(null);
   const [existingPost, setExistingPost] = useState(null);
   const [loading, setLoading] = useState(false);
 
-  // 🔹 Load current user safely
+  // 🔹 Load current user
   useEffect(() => {
-    authService.getCurrentUser()
+    authService
+      .getCurrentUser()
       .then((u) => {
         if (!u) {
-          alert("User not found! Please login again.");
           navigate("/login");
           return;
         }
-        // fallback name from email if name missing
-        if (!u.name) u.name = u.email?.split("@")[0] || "Unknown";
+
+        if (!u.name) {
+          u.name = u.email?.split("@")[0] || "Unknown";
+        }
+
         setUser(u);
       })
-      .catch((err) => console.log("Error fetching user:", err));
-  }, []);
+      .catch((err) => console.log("Error fetching user:", err))
+      .finally(() => setAuthLoading(false)); // ✅ IMPORTANT
+  }, [navigate]);
 
-  // 🔹 Load existing post for editing
+  // 🔹 Load existing post (edit mode)
   useEffect(() => {
     if (!slug) return;
-    databaseServices.getPost(slug)
+
+    databaseServices
+      .getPost(slug)
       .then((post) => {
         if (post) {
           setExistingPost(post);
@@ -52,26 +63,27 @@ function AddEditPost() {
       .catch((err) => console.log("Error fetching post:", err));
   }, [slug]);
 
-  // 🔹 Handle create/update submit
+  // 🔹 Submit handler
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!user) return alert("User not loaded");
+
+    if (!user) return; // ✅ no alert
 
     setLoading(true);
+
     try {
       let finalFileId = existingPost?.featuredImage || null;
 
-      // Upload new image if selected
+      // Upload file if selected
       if (file) {
         const uploaded = await storageServices.uploadFile(file);
         if (!uploaded) throw new Error("File upload failed");
         finalFileId = uploaded.$id;
       }
 
-      // Build payload according to Appwrite structure
       const postData = {
         userId: user.$id,
-        uploaderName: user.name, // ✅ now correctly set
+        uploaderName: user.name,
         title: form.title,
         content: form.content,
         status: form.status,
@@ -79,10 +91,8 @@ function AddEditPost() {
       };
 
       if (slug && existingPost) {
-        // Update post
         await databaseServices.updatePost(slug, postData);
       } else {
-        // Create new post
         await databaseServices.createPost(postData);
       }
 
@@ -91,48 +101,95 @@ function AddEditPost() {
       console.log("Submit error:", err);
       alert(err.message);
     }
+
     setLoading(false);
   };
 
-  if (!user) return <div className="text-white p-10">Loading user...</div>;
+  // ✅ BLOCK UI UNTIL AUTH CHECK
+  if (authLoading) {
+    return <div className="text-white p-10">Checking user...</div>;
+  }
+
+  if (!user) return null;
 
   return (
     <div className="bg-black text-white min-h-screen px-6 py-10 flex justify-center relative">
-      {loading && <LoadingOverlay message={slug ? "Updating..." : "Publishing..."} />}
+      
+      {loading && (
+        <LoadingOverlay
+          message={slug ? "Updating..." : "Publishing..."}
+        />
+      )}
 
       <div className="w-full max-w-3xl flex flex-col gap-6 z-10">
-        <h2 className="text-2xl font-semibold">{slug ? "Edit Blog" : "Create Blog"}</h2>
+        <h2 className="text-2xl font-semibold">
+          {slug ? "Edit Blog" : "Create Blog"}
+        </h2>
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-5">
+          
+          {/* Title */}
           <Input
             label="Title"
             value={form.title}
-            onChange={(e) => setForm({ ...form, title: e.target.value })}
+            onChange={(e) =>
+              setForm({ ...form, title: e.target.value })
+            }
             required
           />
 
+          {/* File Input */}
           <input
             type="file"
             onChange={(e) => setFile(e.target.files[0])}
-            className="text-sm"
+            className="
+              block w-full text-sm text-gray-600
+              border border-gray-300 rounded-lg
+              hover:border-blue-400
+              focus:outline-none focus:border-blue-500
+              transition-all duration-200
+              file:mr-4 file:py-2 file:px-4
+              file:rounded-lg file:border-0
+              file:text-sm file:font-medium
+              file:bg-blue-50 file:text-blue-700
+              hover:file:bg-blue-100
+              cursor-pointer
+            "
           />
 
+          {/* Content Editor */}
           <RTE
             value={form.content}
-            onChange={(value) => setForm({ ...form, content: value })}
+            onChange={(value) =>
+              setForm({ ...form, content: value })
+            }
           />
 
+          {/* Status */}
           <select
-            className="bg-black border border-gray-700 p-2 rounded"
+            className="bg-black border border-gray-700 p-2 rounded hover:border-blue-400 transition-all"
             value={form.status}
-            onChange={(e) => setForm({ ...form, status: e.target.value })}
+            onChange={(e) =>
+              setForm({ ...form, status: e.target.value })
+            }
           >
             <option value="active">Active</option>
             <option value="inactive">Inactive</option>
           </select>
 
-          <Button className="cursor-pointer" type="submit" disabled={loading}>
-            {loading ? (slug ? "Updating..." : "Publishing...") : (slug ? "Update Blog" : "Publish Blog")}
+          {/* Submit */}
+          <Button
+            className="cursor-pointer"
+            type="submit"
+            disabled={loading || !user}
+          >
+            {loading
+              ? slug
+                ? "Updating..."
+                : "Publishing..."
+              : slug
+              ? "Update Blog"
+              : "Publish Blog"}
           </Button>
         </form>
       </div>

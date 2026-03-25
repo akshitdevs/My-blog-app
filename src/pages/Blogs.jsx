@@ -1,4 +1,3 @@
-// pages/Blogs.jsx
 import React, { useEffect, useState } from "react";
 import databaseServices from "../appwrite/config";
 import storageServices from "../appwrite/storage";
@@ -8,10 +7,9 @@ import { NavLink } from "react-router-dom";
 function Blogs() {
   const user = useSelector((state) => state.auth.userData);
   const [posts, setPosts] = useState([]);
-  const [filter, setFilter] = useState("explore"); // "explore" or "my"
+  const [filter, setFilter] = useState("explore");
   const [loading, setLoading] = useState(false);
 
-  // Fetch all posts
   const fetchPosts = async () => {
     setLoading(true);
     try {
@@ -27,7 +25,6 @@ function Blogs() {
     fetchPosts();
   }, []);
 
-  // Delete post
   const handleDelete = async (postId) => {
     const confirmDelete = window.confirm(
       "Are you sure you want to delete this post?"
@@ -44,36 +41,39 @@ function Blogs() {
     }
   };
 
-  // Filter posts based on selected tab
   const filteredPosts =
     filter === "my"
       ? posts.filter((post) => post.userId === user?.$id)
       : posts.filter((post) => post.status === "active");
 
   return (
-    <div className="bg-black text-white min-h-screen px-6 py-10">
+    <div className="bg-black text-white min-h-screen px-6 py-10
+                    opacity-0 animate-[fadeInUp_0.5s_ease-out_forwards]">
+
       <h1 className="text-2xl font-semibold mb-6">Blogs</h1>
 
       {/* Filter Tabs */}
       <div className="flex gap-4 mb-8">
         <button
           onClick={() => setFilter("explore")}
-          className={`px-4 py-2 rounded ${
-            filter === "explore"
-              ? "bg-amber-400 text-black font-semibold"
-              : "bg-gray-800 text-white"
-          }`}
+          className={`cursor-pointer px-4 py-2 rounded transition-all duration-200
+            ${
+              filter === "explore"
+                ? "bg-amber-400 text-black font-semibold shadow-sm"
+                : "bg-gray-800 text-white hover:bg-gray-700 hover:shadow-md"
+            }`}
         >
           Explore
         </button>
 
         <button
           onClick={() => setFilter("my")}
-          className={`px-4 py-2 rounded ${
-            filter === "my"
-              ? "bg-amber-400 text-black font-semibold"
-              : "bg-gray-800 text-white"
-          }`}
+          className={`cursor-pointer px-4 py-2 rounded transition-all duration-200
+            ${
+              filter === "my"
+                ? "bg-amber-400 text-black font-semibold shadow-sm"
+                : "bg-gray-800 text-white hover:bg-gray-700 hover:shadow-md"
+            }`}
         >
           My Blogs
         </button>
@@ -88,13 +88,16 @@ function Blogs() {
 
       {/* Posts Grid */}
       <div className="grid md:grid-cols-3 gap-6">
-        {filteredPosts.map((post) => {
+        {filteredPosts.map((post, index) => {
           const isOwner = user?.$id === post.userId;
 
           return (
             <div
               key={post.$id}
-              className="border border-gray-800 rounded overflow-hidden flex flex-col"
+              className="border border-gray-800 rounded overflow-hidden flex flex-col
+                         transform opacity-0 animate-[fadeInUp_0.5s_ease-out_forwards]
+                         hover:scale-[1.02] hover:shadow-lg transition-all duration-300"
+              style={{ animationDelay: `${index * 100}ms` }} // 🔥 stagger
             >
               {/* Image */}
               {post.featuredImage && (
@@ -109,12 +112,10 @@ function Blogs() {
               <div className="p-4 flex flex-col gap-2 grow">
                 <h2 className="text-lg font-semibold">{post.title}</h2>
 
-                {/* Uploader Name */}
                 <p className="text-gray-400 text-sm">
                   By: {post.uploaderName || "Unknown"}
                 </p>
 
-                {/* Preview */}
                 <p className="text-gray-400 text-sm line-clamp-3">
                   {post.content.replace(/<[^>]+>/g, "").slice(0, 100)}...
                 </p>
@@ -130,7 +131,6 @@ function Blogs() {
 
                   {isOwner && (
                     <div className="flex gap-2">
-                      {/* Edit link */}
                       <NavLink
                         to={`/edit/${post.$id}`}
                         className="text-sm text-amber-400 hover:underline"
@@ -138,7 +138,6 @@ function Blogs() {
                         Edit
                       </NavLink>
 
-                      {/* Delete */}
                       <button
                         onClick={() => handleDelete(post.$id)}
                         className="text-sm cursor-pointer text-red-500 hover:underline"
@@ -161,6 +160,22 @@ function Blogs() {
           </p>
         )}
       </div>
+
+      {/* Animation */}
+      <style>
+        {`
+          @keyframes fadeInUp {
+            0% {
+              opacity: 0;
+              transform: translateY(20px);
+            }
+            100% {
+              opacity: 1;
+              transform: translateY(0);
+            }
+          }
+        `}
+      </style>
     </div>
   );
 }
