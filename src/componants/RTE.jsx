@@ -4,7 +4,7 @@ import { Editor } from "@tinymce/tinymce-react";
 function RTE({ value, onChange }) {
   return (
     <Editor
-      apiKey="your-api-key"
+      apiKey="uey8v5o56lv6pjuuvb4b3xpcpfsj0xmzybx6yq116vfzsyw8"
       value={value}
       onEditorChange={onChange}
       init={{
