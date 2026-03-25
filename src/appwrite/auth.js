@@ -12,24 +12,25 @@ export class AuthService {
     this.account = new Account(this.client);
   }
 
-  async createAccount({ email, password, name }) {
-    try {
-      const user = await this.account.create(
-        ID.unique(),
-        email,
-        password,
-        name,
-      );
-      return user;
-      // if (user) {
-      //   return this.login({ email, password });
-      // } else {
-      //   return user;
-      // }
-    } catch (error) {
-      throw error;
+async createAccount({ email, password, name }) {
+  try {
+    const userAccount = await this.account.create(
+      ID.unique(),
+      email,
+      password,
+      name
+    );
+
+    if (userAccount) {
+      // ✅ AUTO LOGIN AFTER SIGNUP
+      await this.login({ email, password });
     }
+
+    return userAccount;
+  } catch (error) {
+    throw error;
   }
+}
 
 async login({ email, password }) {
   try {
