@@ -84,39 +84,42 @@ function Blogs() {
         ${animatePage ? "opacity-100" : "opacity-0"}`}
     >
       {/* Sticky Header */}
-<div className="sticky top-0 z-50 bg-black/90 backdrop-blur border-b border-gray-800 px-4 py-3 flex flex-col md:flex-row md:justify-between items-start md:items-center gap-3 transition-all">
-  <div className="flex flex-col">
-    <h1 className="text-xl font-semibold">Blogs</h1>
-{filter !== "my" && (
-  <p className="text-gray-400 text-xs mt-1">
-    To <span className="text-amber-400 font-medium">edit</span> or <span className="text-red-500 font-medium">delete</span> your posts, switch to <span className="text-amber-400 font-medium">My Blogs</span>.
-  </p>
-)}
-  </div>
+      <div className="sticky top-0 z-50 bg-black/90 backdrop-blur border-b border-gray-800 px-4 py-3 flex flex-col md:flex-row md:justify-between items-start md:items-center gap-3 transition-all">
+        <div className="flex flex-col">
+          <h1 className="text-xl font-semibold">Blogs</h1>
+          {filter !== "my" && (
+            <p className="text-gray-400 text-xs mt-1">
+              To <span className="text-amber-400 font-medium">edit</span> or{" "}
+              <span className="text-red-500 font-medium">delete</span> your
+              posts, switch to{" "}
+              <span className="text-amber-400 font-medium">My Blogs</span>.
+            </p>
+          )}
+        </div>
 
-  {/* Filters */}
-  <div className="flex gap-2 flex-wrap">
-    {["latest", "today", "mostViewed", "my"].map((f) => (
-      <button
-        key={f}
-        onClick={() => handleFilter(f)}
-        className={`px-3 py-1.5 text-sm rounded transition cursor-pointer
-          ${filter === f
-            ? "bg-amber-400 text-black font-medium"
-            : "bg-gray-800 text-gray-300 hover:bg-gray-700"
-          }`}
-      >
-        {f === "latest"
-          ? "Latest"
-          : f === "today"
-          ? "Today"
-          : f === "mostViewed"
-          ? "Most Viewed"
-          : "My Blogs"}
-      </button>
-    ))}
-  </div>
-</div>
+        {/* Filters */}
+        <div className="flex gap-2 flex-wrap">
+          {["latest", "today", "mostViewed", "my"].map((f) => (
+            <button
+              key={f}
+              onClick={() => handleFilter(f)}
+              className={`px-3 py-1.5 text-sm rounded transition cursor-pointer
+                ${filter === f
+                  ? "bg-amber-400 text-black font-medium"
+                  : "bg-gray-800 text-gray-300 hover:bg-gray-700"
+                }`}
+            >
+              {f === "latest"
+                ? "Latest"
+                : f === "today"
+                ? "Today"
+                : f === "mostViewed"
+                ? "Most Viewed"
+                : "My Blogs"}
+            </button>
+          ))}
+        </div>
+      </div>
 
       {/* Content */}
       <div
@@ -181,16 +184,36 @@ function Blogs() {
                       </p>
                     </div>
 
-                    {/* Views */}
-                    <div className="flex justify-start items-center mt-2 text-xs text-gray-300 gap-1">
-                      <FaEye /> {post.views || 0}
+                    {/* Views + Small screen Owner actions */}
+                    <div className="flex justify-between items-center mt-2 text-xs text-gray-300 gap-2">
+                      <div className="flex items-center gap-1">
+                        <FaEye /> {post.views || 0}
+                      </div>
+
+                      {/* Small devices: Edit/Delete buttons inline */}
+                      {isOwner && filter === "my" && (
+                        <div className="flex md:hidden gap-2">
+                          <NavLink
+                            to={`/edit/${post.$id}`}
+                            className="text-amber-400 bg-gray-800 px-2 py-1 rounded hover:bg-gray-700 transition-colors duration-200"
+                          >
+                            Edit
+                          </NavLink>
+                          <button
+                            onClick={() => handleDelete(post.$id)}
+                            className="text-red-500 bg-gray-800 px-2 py-1 rounded hover:bg-gray-700 transition-colors duration-200"
+                          >
+                            Delete
+                          </button>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </NavLink>
 
-                {/* Owner actions: only show if filter is "my" */}
+                {/* Medium+ devices: Absolute top-right Edit/Delete */}
                 {isOwner && filter === "my" && (
-                  <div className="absolute top-2 right-2 flex gap-2 text-xs z-10">
+                  <div className="absolute top-2 right-2 hidden md:flex gap-2 text-xs z-10">
                     <NavLink
                       to={`/edit/${post.$id}`}
                       className="text-amber-400 bg-gray-800 px-2 py-1 rounded hover:bg-gray-700 transition-colors duration-200"
