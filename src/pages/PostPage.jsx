@@ -1,4 +1,3 @@
-// pages/PostPage.jsx
 import React, { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import databaseServices from "../appwrite/config";
@@ -18,31 +17,31 @@ function PostPage() {
       .catch(() => setUser(null));
   }, []);
 
-useEffect(() => {
-  const fetchAndIncrement = async () => {
-    try {
-      const data = await databaseServices.getPost(slug);
-      if (!data) return setLoading(false);
+  useEffect(() => {
+    const fetchAndIncrement = async () => {
+      try {
+        const data = await databaseServices.getPost(slug);
+        if (!data) return setLoading(false);
 
-      setPost(data);
-      setLoading(false);
+        setPost(data);
+        setLoading(false);
 
-      const viewerId = user?.$id || "guest";
+        const viewerId = user?.$id || "guest";
 
-      // ⚡ Fix here: call incrementViews instead of addPostView
-      await databaseServices.incrementViews(slug, viewerId);
+        // ⚡ Fix here: call incrementViews instead of addPostView
+        await databaseServices.incrementViews(slug, viewerId);
 
-      // Refresh post to show updated views
-      const updatedPost = await databaseServices.getPost(slug);
-      setPost(updatedPost);
+        // Refresh post to show updated views
+        const updatedPost = await databaseServices.getPost(slug);
+        setPost(updatedPost);
 
-    } catch (err) {
-      console.log("Error fetching post or updating views:", err);
-    }
-  };
+      } catch (err) {
+        console.log("Error fetching post or updating views:", err);
+      }
+    };
 
-  if (slug && user !== null) fetchAndIncrement();
-}, [slug, user]);
+    if (slug && user !== null) fetchAndIncrement();
+  }, [slug, user]);
 
   if (loading)
     return (

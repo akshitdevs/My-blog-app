@@ -57,20 +57,23 @@ function Blogs() {
     setAnimatePage(false);
     setTimeout(() => {
       setFilter(f);
-      setAnimKey(prev => prev + 1);
+      setAnimKey((prev) => prev + 1);
       setAnimatePage(true);
     }, 150);
   };
 
   // Filter & sort posts
   const filteredPosts = posts
-    .filter(post => {
+    .filter((post) => {
       if (filter === "my") return post.userId === user?.$id;
-      if (filter === "today") return new Date(post.$createdAt).toDateString() === new Date().toDateString();
+      if (filter === "today")
+        return new Date(post.$createdAt).toDateString() ===
+          new Date().toDateString();
       return true;
     })
     .sort((a, b) => {
-      if (filter === "latest") return new Date(b.$createdAt) - new Date(a.$createdAt);
+      if (filter === "latest")
+        return new Date(b.$createdAt) - new Date(a.$createdAt);
       if (filter === "mostViewed") return (b.views || 0) - (a.views || 0);
       return 0;
     });
@@ -86,7 +89,7 @@ function Blogs() {
 
         {/* Filters */}
         <div className="flex gap-2 flex-wrap">
-          {["latest", "today", "mostViewed", "my"].map(f => (
+          {["latest", "today", "mostViewed", "my"].map((f) => (
             <button
               key={f}
               onClick={() => handleFilter(f)}
@@ -96,84 +99,108 @@ function Blogs() {
                   : "bg-gray-800 text-gray-300 hover:bg-gray-700"
                 }`}
             >
-              {f === "latest" ? "Latest" : f === "today" ? "Today" : f === "mostViewed" ? "Most Viewed" : "My Blogs"}
+              {f === "latest"
+                ? "Latest"
+                : f === "today"
+                ? "Today"
+                : f === "mostViewed"
+                ? "Most Viewed"
+                : "My Blogs"}
             </button>
           ))}
         </div>
       </div>
 
       {/* Content */}
-      <div key={animKey} className="flex flex-col gap-4 md:grid md:grid-cols-3 mt-4 transition-all duration-300 ease-in-out">
-        {loading && <div className="text-gray-400 text-center col-span-full">Loading posts...</div>}
+      <div
+        key={animKey}
+        className="flex flex-col gap-4 md:grid md:grid-cols-3 mt-4 transition-all duration-300 ease-in-out"
+      >
+        {loading && (
+          <div className="text-gray-400 text-center col-span-full">
+            Loading posts...
+          </div>
+        )}
 
         {!loading && filteredPosts.length === 0 && (
           <p className="text-gray-400 text-center col-span-full mt-10">
-            {filter === "my" ? "You haven't written any blogs yet." : "No posts found."}
+            {filter === "my"
+              ? "You haven't written any blogs yet."
+              : "No posts found."}
           </p>
         )}
 
-        {!loading && filteredPosts.map(post => {
-          const isOwner = user?.$id === post.userId;
+        {!loading &&
+          filteredPosts.map((post) => {
+            const isOwner = user?.$id === post.userId;
 
-          return (
-            <div
-              key={post.$id}
-              className="flex md:flex-col bg-gray-900 border border-gray-800 rounded-lg overflow-hidden relative
+            return (
+              <div
+                key={post.$id}
+                className="flex md:flex-col bg-gray-900 border border-gray-800 rounded-lg overflow-hidden relative
                 group transition-transform duration-300 ease-out hover:scale-105 hover:shadow-lg"
-            >
-              {/* Main clickable area */}
-              <NavLink to={`/post/${post.$id}`} className="flex md:flex-col flex-1 cursor-pointer">
-                {post.featuredImage && (
-                  <div className="overflow-hidden">
-                    <img
-                      src={storageServices.getFileView(post.featuredImage)}
-                      alt={post.title}
-                      className="w-32 h-28 md:w-full md:h-40 object-cover transition-transform duration-300 ease-out group-hover:scale-110 group-hover:opacity-90"
-                    />
+              >
+                {/* Main clickable area */}
+                <NavLink
+                  to={`/post/${post.$id}`}
+                  className="flex md:flex-col flex-1 cursor-pointer"
+                >
+                  {post.featuredImage && (
+                    <div className="overflow-hidden">
+                      <img
+                        src={storageServices.getFileView(post.featuredImage)}
+                        alt={post.title}
+                        className="w-32 h-28 md:w-full md:h-40 object-cover transition-transform duration-300 ease-out group-hover:scale-110 group-hover:opacity-90"
+                      />
+                    </div>
+                  )}
+
+                  <div className="p-3 flex flex-col justify-between flex-1">
+                    <div>
+                      <h2 className="text-sm md:text-lg font-semibold line-clamp-1 group-hover:underline transition-colors duration-200">
+                        {post.title}
+                      </h2>
+                      <p className="text-xs text-gray-400">
+                        {post.uploaderName || "Unknown"} •{" "}
+                        {formatDate(post.$createdAt)}
+                      </p>
+                      {post.$updatedAt !== post.$createdAt && (
+                        <p className="text-xs text-gray-500">
+                          Updated {formatDate(post.$updatedAt)}
+                        </p>
+                      )}
+                      <p className="text-xs text-gray-400 line-clamp-2 mt-1">
+                        {post.content.replace(/<[^>]+>/g, "").slice(0, 80)}...
+                      </p>
+                    </div>
+
+                    {/* Views */}
+                    <div className="flex justify-start items-center mt-2 text-xs text-gray-300 gap-1">
+                      <FaEye /> {post.views || 0}
+                    </div>
+                  </div>
+                </NavLink>
+
+                {/* Owner actions: only show if filter is "my" */}
+                {isOwner && filter === "my" && (
+                  <div className="absolute top-2 right-2 flex gap-2 text-xs z-10">
+                    <NavLink
+                      to={`/edit/${post.$id}`}
+                      className="text-amber-400 bg-gray-800 px-2 py-1 rounded hover:bg-gray-700 transition-colors duration-200"
+                    >
+                      Edit
+                    </NavLink>
+                    <button
+                      onClick={() => handleDelete(post.$id)}
+                      className="text-red-500 bg-gray-800 px-2 py-1 rounded hover:bg-gray-700 transition-colors duration-200"
+                    >
+                      Delete
+                    </button>
                   </div>
                 )}
-
-                <div className="p-3 flex flex-col justify-between flex-1">
-                  <div>
-                    <h2 className="text-sm md:text-lg font-semibold line-clamp-1 group-hover:underline transition-colors duration-200">{post.title}</h2>
-                    <p className="text-xs text-gray-400">
-                      {post.uploaderName || "Unknown"} • {formatDate(post.$createdAt)}
-                    </p>
-                    {post.$updatedAt !== post.$createdAt && (
-                      <p className="text-xs text-gray-500">Updated {formatDate(post.$updatedAt)}</p>
-                    )}
-                    <p className="text-xs text-gray-400 line-clamp-2 mt-1">
-                      {post.content.replace(/<[^>]+>/g, "").slice(0, 80)}...
-                    </p>
-                  </div>
-
-                  {/* Views */}
-                  <div className="flex justify-start items-center mt-2 text-xs text-gray-300 gap-1">
-                    <FaEye /> {post.views || 0}
-                  </div>
-                </div>
-              </NavLink>
-
-              {/* Owner actions */}
-              {isOwner && (
-                <div className="absolute top-2 right-2 flex gap-2 text-xs z-10">
-                  <NavLink
-                    to={`/edit/${post.$id}`}
-                    className="text-amber-400 bg-gray-800 px-2 py-1 rounded hover:bg-gray-700 transition-colors duration-200"
-                  >
-                    Edit
-                  </NavLink>
-                  <button
-                    onClick={() => handleDelete(post.$id)}
-                    className="text-red-500 bg-gray-800 px-2 py-1 rounded hover:bg-gray-700 transition-colors duration-200"
-                  >
-                    Delete
-                  </button>
-                </div>
-              )}
-            </div>
-          );
-        })}
+              </div>
+            );
+          })}
       </div>
     </div>
   );
