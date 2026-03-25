@@ -12,10 +12,10 @@ function LogoutBtn({ className = "" }) {
 
   const handleLogout = async () => {
     try {
-      await authService.logout(); // delete session
-      dispatch(logout()); // clear redux
+      await authService.logout();
+      dispatch(logout());
       setShowModal(false);
-      navigate("/"); // redirect
+      navigate("/");
     } catch (error) {
       console.log("Logout error", error);
     }
@@ -25,7 +25,7 @@ function LogoutBtn({ className = "" }) {
     <>
       <button
         onClick={() => setShowModal(true)}
-        className={`hover:bg-amber-50 hover:text-black px-3 md:px-6 rounded transition cursor-pointer ${className}`}
+        className={`transition cursor-pointer ${className}`}
       >
         Logout
       </button>
