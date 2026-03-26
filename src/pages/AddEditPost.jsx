@@ -15,17 +15,34 @@ function AddEditPost() {
 
   const [user, setUser] = useState(null);
   const [authLoading, setAuthLoading] = useState(true);
+
   const [form, setForm] = useState({
     title: "",
     content: "",
-    status: "active",
+    status: "public",
   });
+
   const [file, setFile] = useState(null);
   const [existingPost, setExistingPost] = useState(null);
   const [loading, setLoading] = useState(false);
   const [animatePage, setAnimatePage] = useState(false);
 
-  // 🔹 Load current user
+  // 🔥 CENTER POPUP
+  const [popup, setPopup] = useState({
+    show: false,
+    message: "",
+    type: "error",
+  });
+
+  const showPopup = (message, type = "error") => {
+    setPopup({ show: true, message, type });
+
+    setTimeout(() => {
+      setPopup({ show: false, message: "", type: "error" });
+    }, 2200);
+  };
+
+  // 🔹 Load user
   useEffect(() => {
     authService
       .getCurrentUser()
@@ -35,15 +52,14 @@ function AddEditPost() {
           return;
         }
 
-        if (!u.name) u.name = u.email?.split("@")[0] || "Unknown";
-
+        if (!u.name) u.name = u.email?.split("@")[0] || "User";
         setUser(u);
       })
-      .catch((err) => console.log("Error fetching user:", err))
+      .catch(() => showPopup("Failed to load user"))
       .finally(() => setAuthLoading(false));
   }, [navigate]);
 
-  // 🔹 Load existing post (edit mode)
+  // 🔹 Load existing post
   useEffect(() => {
     if (!slug) return;
 
@@ -55,22 +71,35 @@ function AddEditPost() {
           setForm({
             title: post.title || "",
             content: post.content || "",
-            status: post.status || "active",
+            status: post.status || "public",
           });
         }
       })
-      .catch((err) => console.log("Error fetching post:", err));
+      .catch(() => showPopup("Failed to load post"));
   }, [slug]);
 
-  // 🔹 Animate page on mount
+  // 🔹 Animate page
   useEffect(() => {
     setTimeout(() => setAnimatePage(true), 50);
   }, []);
 
-  // 🔹 Submit handler
+  // 🔥 SUBMIT
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!user) return;
+
+    // ✅ VALIDATION
+    if (!form.title.trim()) {
+      return showPopup("Title is required");
+    }
+
+    if (!form.content.trim()) {
+      return showPopup("Content cannot be empty");
+    }
+
+    if (!file && !existingPost?.featuredImage) {
+      return showPopup("You forgot to upload a cover image");
+    }
 
     setLoading(true);
 
@@ -79,7 +108,7 @@ function AddEditPost() {
 
       if (file) {
         const uploaded = await storageServices.uploadFile(file);
-        if (!uploaded) throw new Error("File upload failed");
+        if (!uploaded) throw new Error("Image upload failed");
 
         if (existingPost?.featuredImage) {
           await storageServices.deleteFile(existingPost.featuredImage);
@@ -100,14 +129,16 @@ function AddEditPost() {
 
       if (slug && existingPost) {
         await databaseServices.updatePost(slug, postData);
+        showPopup("Post updated successfully", "success");
       } else {
         await databaseServices.createPost(postData);
+        showPopup("Post published successfully", "success");
       }
 
-      navigate("/blogs");
+      setTimeout(() => navigate("/blogs"), 1000);
     } catch (err) {
-      console.log("Submit error:", err);
-      alert(err.message);
+      console.log(err);
+      showPopup(err.message || "Something went wrong");
     }
 
     setLoading(false);
@@ -116,27 +147,36 @@ function AddEditPost() {
   return (
     <div
       className={`bg-black text-white min-h-screen px-4 py-10 flex justify-center relative
-      transition-all duration-700 ease-in-out
+      transition-all duration-700
       ${animatePage ? "opacity-100 translate-y-0" : "opacity-0 translate-y-10"}`}
     >
-      {/* 🔹 Overlay while checking user */}
-      {authLoading && (
-        <div className="absolute inset-0 bg-black/70 flex items-center justify-center z-20">
-          <div className="text-white text-lg animate-pulse">
-            Checking user...
+      {/* 🔥 CENTER POPUP */}
+      {popup.show && (
+        <div className="fixed inset-0 flex items-center justify-center z-50 pointer-events-none">
+          <div
+            className={`px-6 py-3 rounded-lg shadow-xl text-white text-sm font-medium
+            animate-popup
+            ${popup.type === "success" ? "bg-green-600" : "bg-red-600"}`}
+          >
+            {popup.message}
           </div>
         </div>
       )}
 
-      {/* 🔹 Loading overlay for submit */}
-      {loading && <LoadingOverlay message={slug ? "Updating..." : "Publishing..."} />}
+      {/* AUTH LOADING */}
+      {authLoading && (
+        <div className="absolute inset-0 bg-black/70 flex items-center justify-center z-20">
+          Checking user...
+        </div>
+      )}
 
-      {/* 🔹 Form container */}
-      <div
-        className={`w-full max-w-3xl flex flex-col gap-6 z-10
-        transition-all duration-500 ease-in-out
-        ${authLoading ? "opacity-50" : "opacity-100"}`}
-      >
+      {/* SUBMIT LOADING */}
+      {loading && (
+        <LoadingOverlay message={slug ? "Updating..." : "Publishing..."} />
+      )}
+
+      {/* FORM */}
+      <div className="w-full max-w-3xl flex flex-col gap-6 z-10">
         <h2 className="text-2xl font-semibold">
           {slug ? "Edit Blog" : "Create Blog"}
         </h2>
@@ -146,53 +186,53 @@ function AddEditPost() {
           <Input
             label="Title"
             value={form.title}
-            onChange={(e) => setForm({ ...form, title: e.target.value })}
+            onChange={(e) =>
+              setForm({ ...form, title: e.target.value })
+            }
             required
           />
 
-          {/* File Input */}
+          {/* File */}
           <input
             type="file"
             accept="image/*"
             onChange={(e) => setFile(e.target.files[0])}
-            className="
-              block w-full text-sm text-gray-600
-              border border-gray-300 rounded-lg
-              hover:border-blue-400
-              focus:outline-none focus:border-blue-500
-              transition-all duration-200
-              file:mr-4 file:py-2 file:px-4
-              file:rounded-lg file:border-0
-              file:text-sm file:font-medium
-              file:bg-blue-50 file:text-blue-700
-              hover:file:bg-blue-100
-              cursor-pointer
-            "
+            className="block w-full text-sm border border-gray-600 rounded-lg p-2 cursor-pointer"
           />
 
-          {/* RTE editor */}
+          {/* Editor */}
           <RTE
             value={form.content}
-            onChange={(value) => setForm({ ...form, content: value })}
+            onChange={(value) =>
+              setForm({ ...form, content: value })
+            }
           />
 
           {/* Status */}
           <select
-            className="bg-black border border-gray-700 p-2 rounded hover:border-blue-400 transition-all"
             value={form.status}
-            onChange={(e) => setForm({ ...form, status: e.target.value })}
+            onChange={(e) =>
+              setForm({ ...form, status: e.target.value })
+            }
+            className="cursor-pointer bg-black border border-gray-700 p-2 rounded"
           >
-            <option value="active">Active</option>
-            <option value="inactive">Inactive</option>
+            <option value="public">Public</option>
+            <option value="private">Private</option>
           </select>
 
-          {/* Submit button */}
+          {/* Submit */}
           <Button
-            className="cursor-pointer"
             type="submit"
             disabled={loading || !user}
+            className="cursor-pointer"
           >
-            {loading ? (slug ? "Updating..." : "Publishing...") : slug ? "Update Blog" : "Publish Blog"}
+            {loading
+              ? slug
+                ? "Updating..."
+                : "Publishing..."
+              : slug
+              ? "Update Blog"
+              : "Publish Blog"}
           </Button>
         </form>
       </div>

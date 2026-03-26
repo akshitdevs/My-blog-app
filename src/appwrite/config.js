@@ -62,19 +62,19 @@ export class DatabaseServices {
   }
 
   // ✅ Get all posts
-  async getAllPost(queries = [Query.equal("status", "active")]) {
-    try {
-      return await this.databases.listDocuments(
-        conf.appWriteDatabaseId,
-        conf.appWriteCollectionId,
-        queries
-      );
-    } catch (error) {
-      console.log("getAllPost error", error);
-      return [];
-    }
+// appwrite/config.js
+async getAllPost(queries = []) {
+  try {
+    return await this.databases.listDocuments(
+      conf.appWriteDatabaseId,
+      conf.appWriteCollectionId,
+      queries
+    );
+  } catch (error) {
+    console.log("getAllPost error", error);
+    return { documents: [] };
   }
-
+}
   // ✅ Delete a post
   async deletePost(slug) {
     try {
