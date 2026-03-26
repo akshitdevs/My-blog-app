@@ -23,6 +23,7 @@ function AddEditPost() {
   const [file, setFile] = useState(null);
   const [existingPost, setExistingPost] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [animatePage, setAnimatePage] = useState(false);
 
   // 🔹 Load current user
   useEffect(() => {
@@ -34,9 +35,7 @@ function AddEditPost() {
           return;
         }
 
-        if (!u.name) {
-          u.name = u.email?.split("@")[0] || "Unknown";
-        }
+        if (!u.name) u.name = u.email?.split("@")[0] || "Unknown";
 
         setUser(u);
       })
@@ -63,6 +62,11 @@ function AddEditPost() {
       .catch((err) => console.log("Error fetching post:", err));
   }, [slug]);
 
+  // 🔹 Animate page on mount
+  useEffect(() => {
+    setTimeout(() => setAnimatePage(true), 50);
+  }, []);
+
   // 🔹 Submit handler
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -73,14 +77,12 @@ function AddEditPost() {
     try {
       let finalFileId = existingPost?.featuredImage || null;
 
-      // 🔹 Upload new file if selected
       if (file) {
-        const uploaded = await storageServices.uploadFile(file); // updated function
+        const uploaded = await storageServices.uploadFile(file);
         if (!uploaded) throw new Error("File upload failed");
 
-        // 🔹 Delete old file if editing
         if (existingPost?.featuredImage) {
-          await storageServices.deleteFile(existingPost.featuredImage); // updated function
+          await storageServices.deleteFile(existingPost.featuredImage);
         }
 
         finalFileId = uploaded.$id;
@@ -97,10 +99,8 @@ function AddEditPost() {
       };
 
       if (slug && existingPost) {
-        // Update post
         await databaseServices.updatePost(slug, postData);
       } else {
-        // Create post
         await databaseServices.createPost(postData);
       }
 
@@ -113,23 +113,30 @@ function AddEditPost() {
     setLoading(false);
   };
 
-  // ✅ Block UI until auth check
-  if (authLoading) {
-    return <div className="text-white p-10">Checking user...</div>;
-  }
-
-  if (!user) return null;
-
   return (
-    <div className="bg-black text-white min-h-screen px-4 py-10 flex justify-center relative">
-      {/* 🔹 Loading Overlay */}
-      {loading && (
-        <LoadingOverlay
-          message={slug ? "Updating..." : "Publishing..."}
-        />
+    <div
+      className={`bg-black text-white min-h-screen px-4 py-10 flex justify-center relative
+      transition-all duration-700 ease-in-out
+      ${animatePage ? "opacity-100 translate-y-0" : "opacity-0 translate-y-10"}`}
+    >
+      {/* 🔹 Overlay while checking user */}
+      {authLoading && (
+        <div className="absolute inset-0 bg-black/70 flex items-center justify-center z-20">
+          <div className="text-white text-lg animate-pulse">
+            Checking user...
+          </div>
+        </div>
       )}
 
-      <div className="w-full max-w-3xl flex flex-col gap-6 z-10">
+      {/* 🔹 Loading overlay for submit */}
+      {loading && <LoadingOverlay message={slug ? "Updating..." : "Publishing..."} />}
+
+      {/* 🔹 Form container */}
+      <div
+        className={`w-full max-w-3xl flex flex-col gap-6 z-10
+        transition-all duration-500 ease-in-out
+        ${authLoading ? "opacity-50" : "opacity-100"}`}
+      >
         <h2 className="text-2xl font-semibold">
           {slug ? "Edit Blog" : "Create Blog"}
         </h2>
@@ -163,7 +170,7 @@ function AddEditPost() {
             "
           />
 
-          {/* Content Editor */}
+          {/* RTE editor */}
           <RTE
             value={form.content}
             onChange={(value) => setForm({ ...form, content: value })}
@@ -179,19 +186,13 @@ function AddEditPost() {
             <option value="inactive">Inactive</option>
           </select>
 
-          {/* Submit */}
+          {/* Submit button */}
           <Button
             className="cursor-pointer"
             type="submit"
             disabled={loading || !user}
           >
-            {loading
-              ? slug
-                ? "Updating..."
-                : "Publishing..."
-              : slug
-              ? "Update Blog"
-              : "Publish Blog"}
+            {loading ? (slug ? "Updating..." : "Publishing...") : slug ? "Update Blog" : "Publish Blog"}
           </Button>
         </form>
       </div>

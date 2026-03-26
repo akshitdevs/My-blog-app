@@ -34,35 +34,35 @@ function Header() {
       >
         &#x2261;
       </button>
+{/* Mobile Menu */}
+<div
+  className={`absolute top-14 right-2 w-52 flex flex-col gap-2 p-3 
+    bg-black border border-gray-700 rounded-lg shadow-lg
+    transition-all duration-300 origin-top-right
+    z-50
+    ${open ? "scale-100 opacity-100" : "scale-95 opacity-0 pointer-events-none"}`}
+>
+  {navItems.filter(item => item.active).map(item => (
+    <NavLink
+      key={item.name}
+      to={item.link}
+      onClick={() => setOpen(false)}
+      className={({ isActive }) =>
+        `block w-full text-left px-3 py-2 rounded ${
+          isActive
+            ? "bg-white text-black font-semibold"
+            : "hover:bg-amber-50 hover:text-black"
+        }`
+      }
+    >
+      {item.name}
+    </NavLink>
+  ))}
 
-      {/* Mobile Menu */}
-      <div
-        className={`absolute top-14 right-2 w-52 flex flex-col gap-2 p-3 
-        bg-black border border-gray-700 rounded-lg shadow-lg
-        transition-all duration-300 origin-top-right
-        ${open ? "scale-100 opacity-100" : "scale-95 opacity-0 pointer-events-none"}`}
-      >
-        {navItems.filter(item => item.active).map(item => (
-          <NavLink
-            key={item.name}
-            to={item.link}
-            onClick={() => setOpen(false)}
-            className={({ isActive }) =>
-              `block w-full text-left px-3 py-2 rounded ${
-                isActive
-                  ? "bg-white text-black font-semibold"
-                  : "hover:bg-amber-50 hover:text-black"
-              }`
-            }
-          >
-            {item.name}
-          </NavLink>
-        ))}
-
-        {authstatus && (
-          <LogoutBtn className="w-full text-left px-3 py-2 rounded hover:bg-amber-50 hover:text-black" />
-        )}
-      </div>
+  {authstatus && (
+    <LogoutBtn className="w-full text-left px-3 py-2 rounded hover:bg-amber-50 hover:text-black" />
+  )}
+</div>
 
       {/* Desktop Menu */}
       <div className='hidden sm:flex items-center gap-6'>

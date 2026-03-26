@@ -231,6 +231,18 @@ function Blogs() {
               </div>
             );
           })}
+
+        {/* Write Blog button at the bottom of My Blogs */}
+        {filter === "my" && (
+          <div className="col-span-full flex justify-center mt-6">
+            <NavLink
+              to="/write-blog"
+              className="text-black bg-amber-400 px-4 py-2 rounded hover:bg-amber-500 font-medium transition-colors"
+            >
+              + Write Blog
+            </NavLink>
+          </div>
+        )}
       </div>
     </div>
   );
