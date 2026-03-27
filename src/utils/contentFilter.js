@@ -1,135 +1,65 @@
 // utils/contentFilter.js
 
-// ✅ English bad words
+// ================================
+// ✅ STRONG ENGLISH WORDS
+// ================================
 const englishBadWords = [
-"fuck","fucker","fucking","fucked","motherfucker",
-"shit","bullshit","shithead",
-"bitch","bitches",
-"asshole","ass","dumbass",
-"bastard","bloody","bloodyhell",
-"slut","whore","skank",
-"dick","dickhead",
-"pussy","cunt",
-"cock","suck","sucker",
-"jerk","jerkoff",
-"retard","idiot","moron","stupid",
-"loser","trash","garbage",
-"damn","goddamn",
-"crap","screw","screwed",
-"nuts","lunatic","psycho",
-"pervert","creep",
-"freak","weirdo",
-"scumbag","douche","douchebag",
-"dipshit","jackass",
-"twat","wanker",
-"arse","arsehole",
-"bollocks",
-"prick","tool",
-"numbnuts",
-"shitface","shitbag",
-"fuckface","fuckboy",
-"asslicker",
-"sonofabitch",
-"shitstorm",
-"piss","pissed",
-"pisshead",
-"shitshow",
-"dammit",
-"bugger",
-"bloodyfool",
-"shitbrains",
-"fuckwit",
-"shitlicker",
-"motherfucking",
-"arsewipe",
-"shitstain",
-"shitass",
-"fucknut",
-"cockhead",
-"dickweed",
-"shitforbrains",
-"asshat",
-"asswipe",
-"butthead"
+  "fuck","fucker","fucking","fucked","motherfucker",
+  "shit","bullshit","shithead",
+  "bitch","bitches",
+  "asshole","dumbass",
+  "bastard",
+  "slut","whore",
+  "dick","dickhead",
+  "pussy","cunt",
+  "cock",
+  "jerkoff",
+  "retard","moron",
+  "scumbag","douchebag",
+  "dipshit","jackass",
+  "twat","wanker",
+  "arsehole",
+  "prick"
 ];
-
-// ✅ Hindi / Hinglish bad words
-const hindiBadWords = [
-"madharchoud","madharchod","madhar chod","madar chod",
-"madarchod","mc",
-"behenchod","bc",
-"bhosdike","bhosdiwala",
-"chutiya","chutiyapa",
-"gaand","gandu","gaandmar",
-"lund","lodu","lode",
-"chut","chutad",
-"harami","haraamkhor",
-"kuttiya","kutta","kamina",
-"randi","randwa",
-"tatti","tatte",
-"bakchod","bakchodi",
-"jhant","jhantu",
-"bhenchod","bhenchot",
-"bkl","bhenkelode",
-"madar","madarjat",
-"gandfat","gandmara",
-"chodu","chodna",
-"lavde","lavda",
-"chapri","tapori",
-"ullu","ullukapattha",
-"haramzada",
-"besharam",
-"nalaayak",
-"bewakoof",
-"pagal","paagal",
-"chirkut",
-"gawar",
-"ghatiya",
-"bakwas",
-"tharki",
-"gandi",
-"lafanga",
-"fattu",
-"gandmara"
-];
-
-// 🔥 merge all
-const blockedWords = [...englishBadWords, ...hindiBadWords];
-
-// 🔴 block your name strictly
-const blockedNames = ["akshit"];
-
 
 // ================================
-// 🔥 NORMALIZE FUNCTION (ANTI-BYPASS)
+// ✅ STRONG HINGlish/HINDI ABUSE ONLY
+// ================================
+const hindiBadWords = [
+  "madharchod", "madhar chod",
+  "madarchod","madharchod",
+  "behenchod","bhenchod",
+  "bhosdike",
+  "chutiya","chutiyapa",
+  "gandmara",
+  "lund","lodu","lavda",
+  "chut",
+  "randi",
+  "jhant",
+  "haramzada",
+  "chodu",
+  "tharki"
+];
+
+// 🔥 MERGE
+const blockedWords = [...englishBadWords, ...hindiBadWords];
+const blockedNames = ["akshit",];
+
+// ================================
+// 🔥 NORMALIZE FUNCTION
 // ================================
 function normalize(text) {
   return text
     .toLowerCase()
-
-    // common replacements
     .replace(/[@4]/g, "a")
     .replace(/[!1]/g, "i")
     .replace(/0/g, "o")
     .replace(/\$/g, "s")
-
-    // remove spaces, emojis, symbols
     .replace(/[^a-z0-9]/g, "");
 }
 
-
 // ================================
-// 🔥 REMOVE HTML (RTE SAFE)
-// ================================
-function stripHTML(html) {
-  return html
-    .replace(/<[^>]*>/g, " ")
-    .replace(/\s+/g, " ");
-}
-
-
-// ================================
-// 🔥 MAIN CHECK FUNCTION
+// 🔥 CHECK IF TEXT CONTAINS BLOCKED WORD
 // ================================
 export function containsBlockedWord(text) {
   if (!text) return false;
@@ -137,38 +67,80 @@ export function containsBlockedWord(text) {
   const raw = text.toLowerCase();
   const normalized = normalize(text);
 
-  // 🔴 1. Direct match
-  const directMatch = blockedWords.some(word =>
-    raw.includes(word)
-  );
+  // direct match
+  const directMatch = blockedWords.some(word => raw.includes(word));
 
-  // 🟡 2. Normalized match (handles spacing + symbols)
+  // normalized match
   const normalizedMatch = blockedWords.some(word =>
     normalized.includes(normalize(word))
   );
 
-  // 🔵 3. Pattern match (ULTRA IMPORTANT 🔥)
-  const patternMatch = blockedWords.some(word => {
-    const pattern = new RegExp(
-      word.split("").join(".*"), // m.*a.*d.*a.*r...
-      "i"
-    );
-    return pattern.test(raw);
-  });
-
-  // 🔴 4. Strict name block (akshit in any form)
+  // strict name match
   const nameMatch = blockedNames.some(name =>
     normalized.includes(name)
   );
 
-  return directMatch || normalizedMatch || patternMatch || nameMatch;
+  return directMatch || normalizedMatch || nameMatch;
 }
 
+// ================================
+// 🔥 CENSOR WORD
+// ================================
+function censorWord(word) {
+  if (!word) return "";
+  if (word.length <= 2) return "**";
+  return word[0] + "*".repeat(word.length - 2) + word[word.length - 1];
+}
 
 // ================================
-// 🔥 RTE SAFE CHECK
+// 🔥 CENSOR TEXT
 // ================================
-export function containsBlockedWordInHTML(html) {
+export function censorText(text) {
+  if (!text) return text;
+
+  let result = text;
+
+  try {
+    const normalizedText = normalize(text);
+
+    // exact word censor
+    blockedWords.forEach(word => {
+      const regex = new RegExp(`\\b${word}\\b`, "gi");
+      result = result.replace(regex, match => censorWord(match));
+    });
+
+    // normalized match censor
+    blockedWords.forEach(word => {
+      const normalizedWord = normalize(word);
+      if (normalizedWord && normalizedText.includes(normalizedWord)) {
+        const regex = new RegExp(word, "gi");
+        result = result.replace(regex, match => censorWord(match));
+      }
+    });
+
+    // name censor
+    blockedNames.forEach(name => {
+      const regex = new RegExp(name, "gi");
+      result = result.replace(regex, censorWord(name));
+    });
+
+  } catch (err) {
+    console.error("Censoring failed:", err);
+    return text;
+  }
+
+  return result;
+}
+
+// ================================
+// 🔥 HTML SAFE CENSOR
+// ================================
+function stripHTML(html) {
+  if (!html) return "";
+  return html.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ");
+}
+
+export function censorHTML(html) {
   const cleanText = stripHTML(html);
-  return containsBlockedWord(cleanText);
+  return censorText(cleanText);
 }

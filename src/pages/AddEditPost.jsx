@@ -8,8 +8,9 @@ import storageServices from "../appwrite/storage";
 import authService from "../appwrite/auth";
 import { useNavigate, useParams } from "react-router-dom";
 import LoadingOverlay from "../componants/LoadingOverlay";
-// 🔥 IMPORT FIX
-import { containsBlockedWord, containsBlockedWordInHTML } from "../utils/contentFilter";
+
+// 🔥 IMPORT CENSOR
+import { censorText, censorHTML } from "../utils/contentFilter";
 
 function AddEditPost() {
   const { slug } = useParams();
@@ -34,6 +35,10 @@ function AddEditPost() {
     message: "",
     type: "error",
   });
+
+  // 🔥 MOBILE SWIPE STATES
+  const [touchStartX, setTouchStartX] = useState(0);
+  const [touchEndX, setTouchEndX] = useState(0);
 
   const showPopup = (message, type = "error") => {
     setPopup({ show: true, message, type });
@@ -81,12 +86,34 @@ function AddEditPost() {
     setTimeout(() => setAnimatePage(true), 50);
   }, []);
 
-  // 🔥 SUBMIT (UPDATED WITH FILTER)
+  // 🔥 MOBILE SWIPE HANDLERS
+  const handleTouchStart = (e) => {
+    setTouchStartX(e.touches[0].clientX);
+  };
+
+  const handleTouchMove = (e) => {
+    setTouchEndX(e.touches[0].clientX);
+  };
+
+  const handleTouchEnd = () => {
+    const distance = touchStartX - touchEndX;
+
+    if (distance > 80) {
+      // Swipe Left - you can add future functionality
+      console.log("Swiped Left");
+    }
+
+    if (distance < -80) {
+      // Swipe Right - go back
+      navigate(-1);
+    }
+  };
+
+  // 🔥 SUBMIT HANDLER WITH CENSOR
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!user) return;
 
-    // ✅ BASIC VALIDATION
     if (!form.title.trim()) {
       return showPopup("Title is required");
     }
@@ -99,17 +126,9 @@ function AddEditPost() {
       return showPopup("You forgot to upload a cover image");
     }
 
-    // 🔥 🚫 CONTENT FILTER VALIDATION
-    const plainContent = form.content.replace(/<[^>]+>/g, "");
-
-if (
-  containsBlockedWord(form.title) ||
-  containsBlockedWordInHTML(form.content)
-) {
-  return showPopup(
-    "You are using restricted or inappropriate words ❌"
-  );
-}
+    // 🔥 CENSOR TEXT BEFORE SAVE
+    const cleanTitle = censorText(form.title);
+    const cleanContent = censorHTML(form.content);
 
     setLoading(true);
 
@@ -130,8 +149,8 @@ if (
       const postData = {
         userId: user.$id,
         uploaderName: user.name,
-        title: form.title,
-        content: form.content,
+        title: cleanTitle,
+        content: cleanContent,
         status: form.status,
         featuredImage: finalFileId,
         views: existingPost?.views || 0,
@@ -140,8 +159,6 @@ if (
       if (slug && existingPost) {
         await databaseServices.updatePost(slug, {
           ...postData,
-
-          // 🔥 FIX: update time only on edit
           lastEditedAt: new Date().toISOString(),
         });
 
@@ -149,8 +166,6 @@ if (
       } else {
         await databaseServices.createPost({
           ...postData,
-
-          // 🔥 FIX: no edit yet
           lastEditedAt: null,
         });
 
@@ -168,6 +183,9 @@ if (
 
   return (
     <div
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
       className={`bg-black text-white min-h-screen px-4 py-10 flex justify-center relative
       transition-all duration-700
       ${animatePage ? "opacity-100 translate-y-0" : "opacity-0 translate-y-10"}`}

@@ -14,27 +14,32 @@ export class AuthService {
     this.account = new Account(this.client);
   }
 
-  // ✅ CREATE ACCOUNT WITH VALIDATION
+  // ✅ CREATE ACCOUNT WITH VALIDATION MATCHING contentFilter
   async createAccount({ email, password, name }) {
     try {
-      if (
-        name === "akshitbarthwal" ||
-        "AKSHITBARTHWAL"
-      ) {
-        throw new Error("BHADWE APNA NAAM RAKH");
+      if (!name) {
+        throw new Error("Username is required ❌");
       }
-      // 🚫 BLOCK BAD / RESTRICTED USERNAMES
-      if (!name || containsBlockedWord(name)) {
+
+      // 🔴 BLOCK STRICT NAMES
+      const blockedNamesStrict = ["akshit"];
+      if (blockedNamesStrict.includes(name.toLowerCase())) {
+        throw new Error("This username is not allowed ❌");
+      }
+
+      // 🚫 BLOCK BAD / RESTRICTED USERNAMES USING contentFilter
+      if (containsBlockedWord(name)) {
         throw new Error(
-          "Username contains restricted or inappropriate words ❌",
+          "Username contains restricted or inappropriate words ❌"
         );
       }
 
+      // ✅ CREATE ACCOUNT
       const userAccount = await this.account.create(
         ID.unique(),
         email,
         password,
-        name,
+        name
       );
 
       // ✅ AUTO LOGIN AFTER SIGNUP
