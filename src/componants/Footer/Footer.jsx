@@ -57,7 +57,7 @@ function Footer() {
 
           {/* Social Icons */}
           <div className="flex gap-4 text-gray-400 text-lg">
-            <a href="https://github.com/ankkuuu" className="hover:text-white transition">
+            <a href="https://github.com/akshitdevs" className="hover:text-white transition">
               <FaGithub />
             </a>
             <a href="https://www.linkedin.com/in/akshit-barthwal-5592b1287" className="hover:text-white transition">
