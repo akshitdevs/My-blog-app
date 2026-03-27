@@ -8,6 +8,8 @@ import storageServices from "../appwrite/storage";
 import authService from "../appwrite/auth";
 import { useNavigate, useParams } from "react-router-dom";
 import LoadingOverlay from "../componants/LoadingOverlay";
+// 🔥 IMPORT FIX
+import { containsBlockedWord, containsBlockedWordInHTML } from "../utils/contentFilter";
 
 function AddEditPost() {
   const { slug } = useParams();
@@ -27,7 +29,6 @@ function AddEditPost() {
   const [loading, setLoading] = useState(false);
   const [animatePage, setAnimatePage] = useState(false);
 
-  // 🔥 CENTER POPUP
   const [popup, setPopup] = useState({
     show: false,
     message: "",
@@ -42,7 +43,6 @@ function AddEditPost() {
     }, 2200);
   };
 
-  // 🔹 Load user
   useEffect(() => {
     authService
       .getCurrentUser()
@@ -59,7 +59,6 @@ function AddEditPost() {
       .finally(() => setAuthLoading(false));
   }, [navigate]);
 
-  // 🔹 Load existing post
   useEffect(() => {
     if (!slug) return;
 
@@ -78,17 +77,16 @@ function AddEditPost() {
       .catch(() => showPopup("Failed to load post"));
   }, [slug]);
 
-  // 🔹 Animate page
   useEffect(() => {
     setTimeout(() => setAnimatePage(true), 50);
   }, []);
 
-  // 🔥 SUBMIT
+  // 🔥 SUBMIT (UPDATED WITH FILTER)
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!user) return;
 
-    // ✅ VALIDATION
+    // ✅ BASIC VALIDATION
     if (!form.title.trim()) {
       return showPopup("Title is required");
     }
@@ -100,6 +98,18 @@ function AddEditPost() {
     if (!file && !existingPost?.featuredImage) {
       return showPopup("You forgot to upload a cover image");
     }
+
+    // 🔥 🚫 CONTENT FILTER VALIDATION
+    const plainContent = form.content.replace(/<[^>]+>/g, "");
+
+if (
+  containsBlockedWord(form.title) ||
+  containsBlockedWordInHTML(form.content)
+) {
+  return showPopup(
+    "You are using restricted or inappropriate words ❌"
+  );
+}
 
     setLoading(true);
 
@@ -128,10 +138,22 @@ function AddEditPost() {
       };
 
       if (slug && existingPost) {
-        await databaseServices.updatePost(slug, postData);
+        await databaseServices.updatePost(slug, {
+          ...postData,
+
+          // 🔥 FIX: update time only on edit
+          lastEditedAt: new Date().toISOString(),
+        });
+
         showPopup("Post updated successfully", "success");
       } else {
-        await databaseServices.createPost(postData);
+        await databaseServices.createPost({
+          ...postData,
+
+          // 🔥 FIX: no edit yet
+          lastEditedAt: null,
+        });
+
         showPopup("Post published successfully", "success");
       }
 
@@ -150,7 +172,6 @@ function AddEditPost() {
       transition-all duration-700
       ${animatePage ? "opacity-100 translate-y-0" : "opacity-0 translate-y-10"}`}
     >
-      {/* 🔥 CENTER POPUP */}
       {popup.show && (
         <div className="fixed inset-0 flex items-center justify-center z-50 pointer-events-none">
           <div
@@ -163,26 +184,22 @@ function AddEditPost() {
         </div>
       )}
 
-      {/* AUTH LOADING */}
       {authLoading && (
         <div className="absolute inset-0 bg-black/70 flex items-center justify-center z-20">
           Checking user...
         </div>
       )}
 
-      {/* SUBMIT LOADING */}
       {loading && (
         <LoadingOverlay message={slug ? "Updating..." : "Publishing..."} />
       )}
 
-      {/* FORM */}
       <div className="w-full max-w-3xl flex flex-col gap-6 z-10">
         <h2 className="text-2xl font-semibold">
           {slug ? "Edit Blog" : "Create Blog"}
         </h2>
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-5">
-          {/* Title */}
           <Input
             label="Title"
             value={form.title}
@@ -192,7 +209,6 @@ function AddEditPost() {
             required
           />
 
-          {/* File */}
           <input
             type="file"
             accept="image/*"
@@ -200,7 +216,6 @@ function AddEditPost() {
             className="block w-full text-sm border border-gray-600 rounded-lg p-2 cursor-pointer"
           />
 
-          {/* Editor */}
           <RTE
             value={form.content}
             onChange={(value) =>
@@ -208,7 +223,6 @@ function AddEditPost() {
             }
           />
 
-          {/* Status */}
           <select
             value={form.status}
             onChange={(e) =>
@@ -220,7 +234,6 @@ function AddEditPost() {
             <option value="private">Private</option>
           </select>
 
-          {/* Submit */}
           <Button
             type="submit"
             disabled={loading || !user}

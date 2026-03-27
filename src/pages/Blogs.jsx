@@ -1,19 +1,19 @@
 // pages/Blogs.jsx
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { useSelector } from "react-redux";
 import { NavLink } from "react-router-dom";
 import { Query } from "appwrite";
 import databaseServices from "../appwrite/config";
 import storageServices from "../appwrite/storage";
 import { FaEye } from "react-icons/fa";
-import { createPortal } from "react-dom";
+
 function Blogs() {
   const [deleteModal, setDeleteModal] = useState({
-  open: false,
-  postId: null,
-});
+    open: false,
+    postId: null,
+  });
 
-const [deleting, setDeleting] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const user = useSelector((state) => state.auth.userData);
 
   const [posts, setPosts] = useState([]);
@@ -23,7 +23,31 @@ const [deleting, setDeleting] = useState(false);
   const [animatePage, setAnimatePage] = useState(false);
   const [animKey, setAnimKey] = useState(0);
 
-  // 🔥 FETCH POSTS (FIXED PROPERLY)
+  // ✅ SWIPE
+  const touchStartX = useRef(0);
+  const touchEndX = useRef(0);
+  const filters = ["latest", "today", "mostViewed", "my"];
+
+  const handleTouchStart = (e) => {
+    touchStartX.current = e.changedTouches[0].screenX;
+  };
+
+  const handleTouchEnd = (e) => {
+    touchEndX.current = e.changedTouches[0].screenX;
+    const diff = touchStartX.current - touchEndX.current;
+
+    if (Math.abs(diff) < 50) return;
+
+    const currentIndex = filters.indexOf(filter);
+
+    if (diff > 0 && currentIndex < filters.length - 1) {
+      handleFilter(filters[currentIndex + 1]);
+    } else if (diff < 0 && currentIndex > 0) {
+      handleFilter(filters[currentIndex - 1]);
+    }
+  };
+
+  // 🔥 FETCH POSTS
   useEffect(() => {
     const fetchPosts = async () => {
       if (!user && filter === "my") return;
@@ -33,12 +57,10 @@ const [deleting, setDeleting] = useState(false);
         let res;
 
         if (filter === "my") {
-          // fetch ALL user posts (private + public)
           res = await databaseServices.getAllPost([
             Query.equal("userId", user.$id),
           ]);
         } else {
-          // fetch ONLY public posts
           res = await databaseServices.getAllPost([
             Query.equal("status", "public"),
           ]);
@@ -56,32 +78,45 @@ const [deleting, setDeleting] = useState(false);
     setTimeout(() => setAnimatePage(true), 50);
   }, [filter, user]);
 
-  // Format date
-  const formatDate = (date) =>
-    new Date(date).toLocaleDateString("en-IN", {
+  // ✅ DATE FORMAT (USING lastEditedAt)
+  const formatDate = (created, lastEdited) => {
+    const createdDate = new Date(created).toLocaleDateString("en-IN", {
       day: "numeric",
       month: "short",
       year: "numeric",
     });
 
-  // DELETE FIXED (NO NAVIGATION BUG)
-const handleDelete = async () => {
-  if (!deleteModal.postId) return;
+    if (!lastEdited) {
+      return createdDate;
+    }
 
-  setDeleting(true);
-  try {
-    await databaseServices.deletePost(deleteModal.postId);
+    const editedDate = new Date(lastEdited).toLocaleDateString("en-IN", {
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+    });
 
-    setPosts((prev) =>
-      prev.filter((p) => p.$id !== deleteModal.postId)
-    );
+    return `${createdDate} • Updated: ${editedDate}`;
+  };
 
-    setDeleteModal({ open: false, postId: null });
-  } catch (err) {
-    console.log("Delete error:", err);
-  }
-  setDeleting(false);
-};
+  // DELETE
+  const handleDelete = async () => {
+    if (!deleteModal.postId) return;
+
+    setDeleting(true);
+    try {
+      await databaseServices.deletePost(deleteModal.postId);
+
+      setPosts((prev) =>
+        prev.filter((p) => p.$id !== deleteModal.postId)
+      );
+
+      setDeleteModal({ open: false, postId: null });
+    } catch (err) {
+      console.log("Delete error:", err);
+    }
+    setDeleting(false);
+  };
 
   // FILTER ANIMATION
   const handleFilter = (f) => {
@@ -93,52 +128,52 @@ const handleDelete = async () => {
     }, 150);
   };
 
-  // 🔥 FINAL FILTER LOGIC (SAFE + CLEAN)
-const filteredPosts = posts
-  .filter((post) => {
-    const status = (post.status || "public").toLowerCase();
-    const isOwner = post.userId === user?.$id;
+  // FILTER LOGIC
+  const filteredPosts = posts
+    .filter((post) => {
+      const status = (post.status || "public").toLowerCase();
+      const isOwner = post.userId === user?.$id;
 
-    // hide private posts for others
-    if (!isOwner && status === "private") return false;
+      if (!isOwner && status === "private") return false;
 
-    // ✅ TODAY CONDITION
-    if (filter === "today") {
-      const isToday =
-        new Date(post.$createdAt).toDateString() ===
-        new Date().toDateString();
+      if (filter === "today") {
+        const isToday =
+          new Date(post.$createdAt).toDateString() ===
+          new Date().toDateString();
 
-      if (!isToday) return false;
-    }
+        if (!isToday) return false;
+      }
 
-    // ✅ SEARCH CONDITION (ALWAYS APPLIES)
-    if (search.trim()) {
-      const s = search.toLowerCase();
+      if (search.trim()) {
+        const s = search.toLowerCase();
 
-      const match =
-        post.title?.toLowerCase().includes(s) ||
-        post.content
-          ?.replace(/<[^>]+>/g, "")
-          .toLowerCase()
-          .includes(s) ||
-        post.uploaderName?.toLowerCase().includes(s);
+        const match =
+          post.title?.toLowerCase().includes(s) ||
+          post.content
+            ?.replace(/<[^>]+>/g, "")
+            .toLowerCase()
+            .includes(s) ||
+          post.uploaderName?.toLowerCase().includes(s);
 
-      if (!match) return false;
-    }
+        if (!match) return false;
+      }
 
-    return true;
-  })
-  .sort((a, b) => {
-    if (filter === "latest")
-      return new Date(b.$createdAt) - new Date(a.$createdAt);
+      return true;
+    })
+    .sort((a, b) => {
+      if (filter === "latest")
+        return new Date(b.$createdAt) - new Date(a.$createdAt);
 
-    if (filter === "mostViewed")
-      return (b.views || 0) - (a.views || 0);
+      if (filter === "mostViewed")
+        return (b.views || 0) - (a.views || 0);
 
-    return 0;
-  });
+      return 0;
+    });
+
   return (
     <div
+      onTouchStart={handleTouchStart}
+      onTouchEnd={handleTouchEnd}
       className={`bg-black text-white min-h-screen px-4 py-6 
       transition-all duration-500 ease-in-out
       ${animatePage ? "opacity-100 translate-y-0" : "opacity-0 translate-y-3"}`}
@@ -204,37 +239,34 @@ const filteredPosts = posts
       </div>
 
       {/* POSTS */}
-   <div
-  key={animKey}
-  className="flex flex-col gap-4 md:grid md:grid-cols-3 mt-4 pb-24"
->
+      <div
+        key={animKey}
+        className="flex flex-col gap-4 md:grid md:grid-cols-3 mt-4 pb-24"
+      >
         {loading && (
           <div className="text-gray-500 text-center col-span-full animate-pulse">
             Loading posts...
           </div>
         )}
+
         {!loading && filteredPosts.length === 0 && (
-  <div className="col-span-full flex flex-col items-center justify-center mt-16 text-center">
-    
-    {filter === "my" ? (
-      <>
-        <h2 className="text-lg font-semibold text-gray-300">
-          No blogs yet
-        </h2>
-
-        <p className="text-gray-400 text-sm mt-2">
-          Start creating your first blog and share your ideas with the world.
-        </p>
-      </>
-    ) : (
-      <p className="text-gray-400 text-sm">
-        No posts found.
-      </p>
-    )}
-
-  </div>
-)}
-
+          <div className="col-span-full flex flex-col items-center justify-center mt-16 text-center">
+            {filter === "my" ? (
+              <>
+                <h2 className="text-lg font-semibold text-gray-300">
+                  No blogs yet
+                </h2>
+                <p className="text-gray-400 text-sm mt-2">
+                  Start creating your first blog and share your ideas with the world.
+                </p>
+              </>
+            ) : (
+              <p className="text-gray-400 text-sm">
+                No posts found.
+              </p>
+            )}
+          </div>
+        )}
 
         {filteredPosts.map((post) => {
           const isOwner = user?.$id === post.userId;
@@ -246,7 +278,6 @@ const filteredPosts = posts
               className="bg-gray-900 border border-gray-800 rounded-lg overflow-hidden relative
               group transition-all duration-300 ease-out hover:scale-105 hover:shadow-lg cursor-pointer"
             >
-              {/* PRIVATE BADGE */}
               {isPrivate && isOwner && (
                 <div className="absolute top-2 left-2 bg-red-500/90 text-white text-[10px] px-2 py-0.5 rounded z-20">
                   Private
@@ -270,7 +301,7 @@ const filteredPosts = posts
                   </h2>
 
                   <p className="text-xs text-gray-400">
-                    {post.uploaderName} • {formatDate(post.$createdAt)}
+                    {post.uploaderName} • {formatDate(post.$createdAt, post.lastEditedAt)}
                   </p>
 
                   <p className="text-xs text-gray-400 mt-1 line-clamp-2">
@@ -295,16 +326,16 @@ const filteredPosts = posts
                           Edit
                         </NavLink>
 
-                      <button
-  onClick={(e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setDeleteModal({ open: true, postId: post.$id });
-  }}
-  className="text-red-500 hover:underline cursor-pointer"
->
-  Delete
-</button>
+                        <button
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            setDeleteModal({ open: true, postId: post.$id });
+                          }}
+                          className="text-red-500 hover:underline cursor-pointer"
+                        >
+                          Delete
+                        </button>
                       </div>
                     )}
                   </div>
@@ -313,64 +344,53 @@ const filteredPosts = posts
             </div>
           );
         })}
-
-
-      
       </div>
-      {/* DELETE CONFIRM MODAL */}
-{deleteModal.open && (
-  <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 animate-fadeIn">
-    
-    <div className="bg-gray-900 border border-gray-700 rounded-xl p-6 w-[90%] max-w-sm shadow-xl transform transition-all animate-scaleIn">
-      
-      <h2 className="text-lg font-semibold mb-2">
-        Delete Post?
-      </h2>
 
-      <p className="text-sm text-gray-400 mb-5">
-        Are you sure you want to delete this post? This action cannot be undone.
-      </p>
+      {/* DELETE MODAL */}
+      {deleteModal.open && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 animate-fadeIn">
+          <div className="bg-gray-900 border border-gray-700 rounded-xl p-6 w-[90%] max-w-sm shadow-xl transform transition-all animate-scaleIn">
+            <h2 className="text-lg font-semibold mb-2">
+              Delete Post?
+            </h2>
 
-      <div className="flex justify-end gap-3">
-        
-        {/* Cancel */}
-        <button
-          onClick={() => setDeleteModal({ open: false, postId: null })}
-          disabled={deleting}
-          className="px-3 py-1.5 bg-gray-800 text-gray-300 rounded hover:bg-gray-700 cursor-pointer"
-        >
-          Cancel
-        </button>
+            <p className="text-sm text-gray-400 mb-5">
+              Are you sure you want to delete this post? This action cannot be undone.
+            </p>
 
-        {/* Confirm Delete */}
-        <button
-          onClick={handleDelete}
-          disabled={deleting}
-          className="px-3 py-1.5 bg-red-600 text-white rounded hover:bg-red-700 cursor-pointer flex items-center gap-2"
-        >
-          {deleting ? "Deleting..." : "Delete"}
-        </button>
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => setDeleteModal({ open: false, postId: null })}
+                disabled={deleting}
+                className="px-3 py-1.5 bg-gray-800 text-gray-300 rounded hover:bg-gray-700 cursor-pointer"
+              >
+                Cancel
+              </button>
 
-      </div>
+              <button
+                onClick={handleDelete}
+                disabled={deleting}
+                className="px-3 py-1.5 bg-red-600 text-white rounded hover:bg-red-700 cursor-pointer flex items-center gap-2"
+              >
+                {deleting ? "Deleting..." : "Delete"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {filter === "my" && (
+        <div className="sticky bottom-0 left-0 w-full z-40 bg-black/80 backdrop-blur border-t border-gray-800 px-4 py-3 mt-6">
+          <NavLink
+            to="/write-blog"
+            className="block w-full text-center bg-amber-400 text-black py-3 rounded-lg font-medium 
+            hover:bg-amber-500 transition active:scale-95 cursor-pointer"
+          >
+            + Write Blog
+          </NavLink>
+        </div>
+      )}
     </div>
-  </div>
-)}
-{filter === "my" && (
-  <div className="sticky bottom-0 left-0 w-full z-40 bg-black/80 backdrop-blur border-t border-gray-800 px-4 py-3 mt-6">
-    
-    <NavLink
-      to="/write-blog"
-      className="block w-full text-center bg-amber-400 text-black py-3 rounded-lg font-medium 
-      hover:bg-amber-500 transition active:scale-95 cursor-pointer"
-    >
-      + Write Blog
-    </NavLink>
-
-  </div>
-)}
-
-    </div>
-    
   );
 }
 
