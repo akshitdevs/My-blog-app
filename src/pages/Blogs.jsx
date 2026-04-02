@@ -13,6 +13,17 @@ function Blogs() {
     postId: null,
   });
 
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+
+  const [dragX, setDragX] = useState(0);
+  const [isDragging, setIsDragging] = useState(false);
+
+  const touchStartY = useRef(0);
+  const touchStartX = useRef(0);
+  const isSwiping = useRef(false);
+
+  const SWIPE_THRESHOLD = 120;
+
   const [deleting, setDeleting] = useState(false);
   const user = useSelector((state) => state.auth.userData);
 
@@ -23,28 +34,82 @@ function Blogs() {
   const [animatePage, setAnimatePage] = useState(false);
   const [animKey, setAnimKey] = useState(0);
 
-  // ✅ SWIPE
-  const touchStartX = useRef(0);
-  const touchEndX = useRef(0);
   const filters = ["latest", "today", "mostViewed", "my"];
 
+  // 🔥 TOUCH HANDLERS
   const handleTouchStart = (e) => {
-    touchStartX.current = e.changedTouches[0].screenX;
+    touchStartX.current = e.touches[0].clientX;
+    touchStartY.current = e.touches[0].clientY;
+    isSwiping.current = false;
+    setIsDragging(true);
+  };
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(search);
+    }, 300); // smooth delay
+
+    return () => clearTimeout(timer);
+  }, [search]);
+
+  const handleTouchMove = (e) => {
+    if (!isDragging) return;
+
+    const currentX = e.touches[0].clientX;
+    const currentY = e.touches[0].clientY;
+
+    const diffX = currentX - touchStartX.current;
+    const diffY = currentY - touchStartY.current;
+
+    // ✅ Better detection (ignore tiny movement)
+    if (!isSwiping.current) {
+      if (Math.abs(diffX) > 10) {
+        if (Math.abs(diffX) > Math.abs(diffY)) {
+          isSwiping.current = true;
+        } else {
+          setIsDragging(false);
+          return;
+        }
+      } else {
+        return;
+      }
+    }
+
+    // 🔥 stop scroll interference
+    if (isSwiping.current) {
+      e.preventDefault();
+    }
+
+    // 🔥 Edge resistance
+    let moveX = diffX;
+    const currentIndex = filters.indexOf(filter);
+
+    if (
+      (currentIndex === 0 && diffX > 0) ||
+      (currentIndex === filters.length - 1 && diffX < 0)
+    ) {
+      moveX = diffX * 0.35;
+    }
+
+    setDragX(moveX);
   };
 
-  const handleTouchEnd = (e) => {
-    touchEndX.current = e.changedTouches[0].screenX;
-    const diff = touchStartX.current - touchEndX.current;
-
-    if (Math.abs(diff) < 50) return;
+  const handleTouchEnd = () => {
+    if (!isSwiping.current) {
+      setDragX(0);
+      setIsDragging(false);
+      return;
+    }
 
     const currentIndex = filters.indexOf(filter);
 
-    if (diff > 0 && currentIndex < filters.length - 1) {
+    if (dragX < -SWIPE_THRESHOLD && currentIndex < filters.length - 1) {
       handleFilter(filters[currentIndex + 1]);
-    } else if (diff < 0 && currentIndex > 0) {
+    } else if (dragX > SWIPE_THRESHOLD && currentIndex > 0) {
       handleFilter(filters[currentIndex - 1]);
     }
+
+    setDragX(0);
+    setIsDragging(false);
   };
 
   // 🔥 FETCH POSTS
@@ -53,6 +118,7 @@ function Blogs() {
       if (!user && filter === "my") return;
 
       setLoading(true);
+      setPosts([]);
       try {
         let res;
 
@@ -78,7 +144,7 @@ function Blogs() {
     setTimeout(() => setAnimatePage(true), 50);
   }, [filter, user]);
 
-  // ✅ DATE FORMAT (USING lastEditedAt)
+  // DATE FORMAT
   const formatDate = (created, lastEdited) => {
     const createdDate = new Date(created).toLocaleDateString("en-IN", {
       day: "numeric",
@@ -86,9 +152,7 @@ function Blogs() {
       year: "numeric",
     });
 
-    if (!lastEdited) {
-      return createdDate;
-    }
+    if (!lastEdited) return createdDate;
 
     const editedDate = new Date(lastEdited).toLocaleDateString("en-IN", {
       day: "numeric",
@@ -118,7 +182,7 @@ function Blogs() {
     setDeleting(false);
   };
 
-  // FILTER ANIMATION
+  // FILTER ANIMATION (UNCHANGED)
   const handleFilter = (f) => {
     setAnimatePage(false);
     setTimeout(() => {
@@ -128,7 +192,7 @@ function Blogs() {
     }, 150);
   };
 
-  // FILTER LOGIC
+  // FILTER LOGIC (UNCHANGED)
   const filteredPosts = posts
     .filter((post) => {
       const status = (post.status || "public").toLowerCase();
@@ -144,8 +208,8 @@ function Blogs() {
         if (!isToday) return false;
       }
 
-      if (search.trim()) {
-        const s = search.toLowerCase();
+      if (debouncedSearch.trim()) {
+        const s = debouncedSearch.toLowerCase();
 
         const match =
           post.title?.toLowerCase().includes(s) ||
@@ -173,6 +237,7 @@ function Blogs() {
   return (
     <div
       onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
       className={`bg-black text-white min-h-screen px-4 py-6 
       transition-all duration-500 ease-in-out
@@ -206,7 +271,7 @@ function Blogs() {
           {search && (
             <button
               onClick={() => setSearch("")}
-              className="bg-amber-400 text-black px-3 rounded-r cursor-pointer"
+              className="bg-amber-400 text-black px-3 rounded-r cursor-pointer active:scale-90 transition"
             >
               Clear
             </button>
@@ -220,34 +285,57 @@ function Blogs() {
               key={f}
               onClick={() => handleFilter(f)}
               className={`px-3 py-1.5 text-sm rounded cursor-pointer transition
-              ${
-                filter === f
+              ${filter === f
                   ? "bg-amber-400 text-black"
                   : "bg-gray-800 text-gray-300 hover:bg-gray-700"
-              }`}
+                }`}
             >
               {f === "latest"
                 ? "Latest"
                 : f === "today"
-                ? "Today"
-                : f === "mostViewed"
-                ? "Most Viewed"
-                : "My Blogs"}
+                  ? "Today"
+                  : f === "mostViewed"
+                    ? "Most Viewed"
+                    : "My Blogs"}
             </button>
           ))}
         </div>
       </div>
 
+{search !== debouncedSearch && (
+  <div className="text-xs text-gray-500 mt-2 px-1 animate-pulse">
+    Searching...
+  </div>
+)}
       {/* POSTS */}
       <div
         key={animKey}
-        className="flex flex-col gap-4 md:grid md:grid-cols-3 mt-4 pb-24"
+        className={`flex flex-col gap-4 md:grid md:grid-cols-3 mt-4 pb-24 
+transition-all duration-300 ${search ? "opacity-90 scale-[0.99]" : "opacity-100 scale-100"}`}
+        style={{
+          transform: `translateX(${dragX}px)`,
+          transition: isDragging ? "none" : "transform 0.3s ease"
+        }}
       >
-        {loading && (
-          <div className="text-gray-500 text-center col-span-full animate-pulse">
-            Loading posts...
-          </div>
-        )}
+        {loading &&
+          Array.from({ length: 6 }).map((_, i) => (
+            <div
+              key={i}
+              className="bg-gray-900 border border-gray-800 rounded-lg overflow-hidden animate-pulse"
+            >
+              {/* Image */}
+              <div className="w-full h-40 bg-gray-800"></div>
+
+              {/* Content */}
+              <div className="p-3 space-y-2">
+                <div className="h-4 bg-gray-800 rounded w-3/4"></div>
+                <div className="h-3 bg-gray-800 rounded w-1/2"></div>
+                <div className="h-3 bg-gray-800 rounded w-full"></div>
+                <div className="h-3 bg-gray-800 rounded w-5/6"></div>
+              </div>
+            </div>
+          ))
+        }
 
         {!loading && filteredPosts.length === 0 && (
           <div className="col-span-full flex flex-col items-center justify-center mt-16 text-center">
@@ -262,8 +350,8 @@ function Blogs() {
               </>
             ) : (
               <p className="text-gray-400 text-sm">
-                No posts found.
-              </p>
+  No results found for "<span className="text-amber-400">{debouncedSearch}</span>"
+</p>
             )}
           </div>
         )}
