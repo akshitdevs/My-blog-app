@@ -6,6 +6,7 @@ import { Query } from "appwrite";
 import databaseServices from "../appwrite/config";
 import storageServices from "../appwrite/storage";
 import { FaEye } from "react-icons/fa";
+import parse from 'html-react-parser';
 
 const filters = ["latest", "today", "mostViewed", "my"];
 const FILTER_LABELS = {
@@ -377,7 +378,7 @@ function Blogs() {
                     </p>
 
                     <p className="text-xs text-gray-600 mt-1.5 line-clamp-2 leading-relaxed">
-                      {post.content.replace(/<[^>]+>/g, "").slice(0, 100)}…
+                      {parse(post.content).slice(0, 100)}…
                     </p>
 
                     <div className="flex justify-between mt-2.5 items-center">
