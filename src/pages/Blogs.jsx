@@ -62,7 +62,7 @@ function Blogs() {
 
     // ✅ Better detection (ignore tiny movement)
     if (!isSwiping.current) {
-      if (Math.abs(diffX) > 10) {
+      if (Math.abs(diffX) > 5) {
         if (Math.abs(diffX) > Math.abs(diffY)) {
           isSwiping.current = true;
         } else {
