@@ -43,18 +43,20 @@ const hindiBadWords = [
 
 // 🔥 MERGE
 const blockedWords = [...englishBadWords, ...hindiBadWords];
-const blockedNames = ["akshit",];
+const blockedNames = ["akshit"];
 
 // ================================
 // 🔥 NORMALIZE FUNCTION
 // ================================
 function normalize(text) {
+  // lower case, replace leet/char tricks, remove non-alphanumeric
   return text
     .toLowerCase()
     .replace(/[@4]/g, "a")
     .replace(/[!1]/g, "i")
     .replace(/0/g, "o")
     .replace(/\$/g, "s")
+    .replace(/\s+/g, "") // remove spaces for f u c k detection
     .replace(/[^a-z0-9]/g, "");
 }
 
@@ -67,18 +69,9 @@ export function containsBlockedWord(text) {
   const raw = text.toLowerCase();
   const normalized = normalize(text);
 
-  // direct match
   const directMatch = blockedWords.some(word => raw.includes(word));
-
-  // normalized match
-  const normalizedMatch = blockedWords.some(word =>
-    normalized.includes(normalize(word))
-  );
-
-  // strict name match
-  const nameMatch = blockedNames.some(name =>
-    normalized.includes(name)
-  );
+  const normalizedMatch = blockedWords.some(word => normalized.includes(normalize(word)));
+  const nameMatch = blockedNames.some(name => normalized.includes(normalize(name)));
 
   return directMatch || normalizedMatch || nameMatch;
 }
@@ -98,49 +91,28 @@ function censorWord(word) {
 export function censorText(text) {
   if (!text) return text;
 
-  let result = text;
+  return text.replace(/\b\w+\b/g, (word) => {
+    const normalizedWord = normalize(word);
 
-  try {
-    const normalizedText = normalize(text);
+    const isBlocked = blockedWords.some(bw => normalize(bw) === normalizedWord);
+    const isNameBlocked = blockedNames.some(name => normalize(name) === normalizedWord);
 
-    // exact word censor
-    blockedWords.forEach(word => {
-      const regex = new RegExp(`\\b${word}\\b`, "gi");
-      result = result.replace(regex, match => censorWord(match));
-    });
-
-    // normalized match censor
-    blockedWords.forEach(word => {
-      const normalizedWord = normalize(word);
-      if (normalizedWord && normalizedText.includes(normalizedWord)) {
-        const regex = new RegExp(word, "gi");
-        result = result.replace(regex, match => censorWord(match));
-      }
-    });
-
-    // name censor
-    blockedNames.forEach(name => {
-      const regex = new RegExp(name, "gi");
-      result = result.replace(regex, censorWord(name));
-    });
-
-  } catch (err) {
-    console.error("Censoring failed:", err);
-    return text;
-  }
-
-  return result;
+    if (isBlocked || isNameBlocked) {
+      return censorWord(word);
+    }
+    return word;
+  });
 }
 
 // ================================
 // 🔥 HTML SAFE CENSOR
 // ================================
-function stripHTML(html) {
-  if (!html) return "";
-  return html.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ");
-}
-
 export function censorHTML(html) {
-  const cleanText = stripHTML(html);
-  return censorText(cleanText);
+  if (!html) return "";
+
+  // replace only text nodes between tags
+  return html.replace(/>([^<]+)</g, (match, textContent) => {
+    const censored = censorText(textContent);
+    return `>${censored}<`;
+  });
 }
