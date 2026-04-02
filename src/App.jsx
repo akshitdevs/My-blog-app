@@ -21,6 +21,7 @@ function App() {
     return (
         <>
             <Header />
+            
             <Outlet />
             <Footer />
         </>
