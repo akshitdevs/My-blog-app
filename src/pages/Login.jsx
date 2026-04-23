@@ -2,11 +2,11 @@
 import React, { useState } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
 import { useDispatch } from "react-redux";
-import Input from "../componants/Input";
-import Button from "../componants/Button";
+import Input from "../components/Input";
+import Button from "../components/Button";
 import authService from "../appwrite/auth";
 import { login } from "../store/authSlice";
-import LoadingOverlay from "../componants/LoadingOverlay";
+import LoadingOverlay from "../components/LoadingOverlay";
 
 function Login() {
   const navigate = useNavigate();

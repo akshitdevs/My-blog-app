@@ -3,7 +3,7 @@ import { useParams } from "react-router-dom";
 import databaseServices from "../appwrite/config";
 import storageServices from "../appwrite/storage";
 import authService from "../appwrite/auth";
-
+import parse from "html-react-parser";
 function PostPage() {
   const { slug } = useParams();
   const [post, setPost] = useState(null);
@@ -122,7 +122,10 @@ const formatDate = (created, lastEdited) => {
         )}
 
         <article className="prose prose-invert max-w-full sm:prose-lg lg:prose-xl">
-          <div dangerouslySetInnerHTML={{ __html: post.content }} />
+          <div>
+            {parse(post.content)}
+
+          </div>
         </article>
       </div>
     </div>

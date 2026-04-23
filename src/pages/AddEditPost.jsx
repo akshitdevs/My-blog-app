@@ -1,17 +1,17 @@
 // pages/AddEditPost.jsx
 import React, { useState, useEffect } from "react";
-import Input from "../componants/Input";
-import Button from "../componants/Button";
-import RTE from "../componants/RTE";
+import Input from "../components/Input";
+import Button from "../components/Button";
+import RTE from "../components/RTE";
 import databaseServices from "../appwrite/config";
 import storageServices from "../appwrite/storage";
 import authService from "../appwrite/auth";
 import { useNavigate, useParams } from "react-router-dom";
-import LoadingOverlay from "../componants/LoadingOverlay";
+import LoadingOverlay from "../components/LoadingOverlay";
 
 // 🔥 IMPORT CENSOR
 import { censorText, censorHTML } from "../utils/contentFilter";
-
+import { containsBlockedWord } from "../utils/contentFilter";
 function AddEditPost() {
   const { slug } = useParams();
   const navigate = useNavigate();
@@ -126,9 +126,15 @@ function AddEditPost() {
       return showPopup("You forgot to upload a cover image");
     }
 
-    // 🔥 CENSOR TEXT BEFORE SAVE
+    if (containsBlockedWord(form.title) || containsBlockedWord(form.content)) {
+      showPopup("Your post contains inappropriate language");
+
+      return; //
+    }
+    // //  CENSOR TEXT BEFORE SAVE
     const cleanTitle = censorText(form.title);
     const cleanContent = censorHTML(form.content);
+
 
     setLoading(true);
 

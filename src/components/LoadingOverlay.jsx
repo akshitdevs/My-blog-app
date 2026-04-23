@@ -1,4 +1,4 @@
-// componants/LoadingOverlay.jsx
+// components/LoadingOverlay.jsx
 import React from "react";
 
 function LoadingOverlay({ message = "Please wait..." }) {

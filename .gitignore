@@ -18,6 +18,7 @@ dist-ssr/
 .vite/
 
 # Local env files
+
 .env
 .env.*
 !.env.example
