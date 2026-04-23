@@ -1,17 +1,9 @@
 // utils/contentFilter.js
-import { englishBadWords, englishBadWords, hindiBadWords, hindiBadWords } from "../conf/BadWords";
+import { englishBadWords, hindiBadWords} from "../conf/BadWords";
 
 // ================================
 // STRONG ENGLISH WORDS
 // ================================
-const englishBadWords = [...englishBadWords
-];
-
-// ================================
-//  STRONG HINGlish/HINDI ABUSE ONLY
-// ================================
-const hindiBadWords = [...hindiBadWords
-];
 
 //MERGE
 const blockedWords = [...englishBadWords, ...hindiBadWords];
