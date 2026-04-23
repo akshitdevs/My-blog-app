@@ -11,7 +11,7 @@ import LoadingOverlay from "../components/LoadingOverlay";
 
 // 🔥 IMPORT CENSOR
 import { censorText, censorHTML } from "../utils/contentFilter";
-import { containsBlockedWord } from "../utils/contentFilter";
+
 function AddEditPost() {
   const { slug } = useParams();
   const navigate = useNavigate();
@@ -126,15 +126,9 @@ function AddEditPost() {
       return showPopup("You forgot to upload a cover image");
     }
 
-    if (containsBlockedWord(form.title) || containsBlockedWord(form.content)) {
-      showPopup("Your post contains inappropriate language");
-
-      return; //
-    }
-    // //  CENSOR TEXT BEFORE SAVE
+    // 🔥 CENSOR TEXT BEFORE SAVE
     const cleanTitle = censorText(form.title);
     const cleanContent = censorHTML(form.content);
-
 
     setLoading(true);
 

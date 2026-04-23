@@ -1,11 +1,9 @@
-// utils/contentFilter.js
+// // utils/contentFilter.js
 import { englishBadWords, hindiBadWords} from "../conf/BadWords";
 
-// ================================
-// STRONG ENGLISH WORDS
-// ================================
 
-//MERGE
+
+// 🔥 MERGE
 const blockedWords = [...englishBadWords, ...hindiBadWords];
 const blockedNames = ["akshit"];
 
@@ -25,7 +23,7 @@ function normalize(text) {
 }
 
 // ================================
-// CHECK IF TEXT CONTAINS BLOCKED WORD
+// 🔥 CHECK IF TEXT CONTAINS BLOCKED WORD
 // ================================
 export function containsBlockedWord(text) {
   if (!text) return false;
@@ -41,7 +39,7 @@ export function containsBlockedWord(text) {
 }
 
 // ================================
-// CENSOR WORD
+// 🔥 CENSOR WORD
 // ================================
 function censorWord(word) {
   if (!word) return "";
@@ -50,7 +48,7 @@ function censorWord(word) {
 }
 
 // ================================
-// CENSOR TEXT
+// 🔥 CENSOR TEXT
 // ================================
 export function censorText(text) {
   if (!text) return text;
@@ -69,7 +67,7 @@ export function censorText(text) {
 }
 
 // ================================
-// HTML SAFE CENSOR
+// 🔥 HTML SAFE CENSOR
 // ================================
 export function censorHTML(html) {
   if (!html) return "";
